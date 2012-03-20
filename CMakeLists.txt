@@ -24,6 +24,7 @@ INCLUDE(cmake/base.cmake)
 INCLUDE(cmake/cpack.cmake)
 INCLUDE(cmake/boost.cmake)
 INCLUDE(cmake/ros.cmake)
+INCLUDE(cmake/kineo.cmake)
 
 SET(PROJECT_NAME hpp-model-urdf)
 SET(PROJECT_DESCRIPTION "Implementation of a parser for hpp-model")

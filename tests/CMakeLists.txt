@@ -40,8 +40,15 @@ MACRO(ADD_TESTCASE NAME)
   ADD_EXECUTABLE(${NAME} ${NAME}.cc)
   ADD_TEST(${NAME} ${RUNTIME_OUTPUT_DIRECTORY}/${NAME})
 
-  # Link against Boost.
-  TARGET_LINK_LIBRARIES(${NAME} ${Boost_LIBRARIES})
+  # Link against Boost and project library.
+  TARGET_LINK_LIBRARIES(${NAME}
+    ${Boost_LIBRARIES}
+    ${PROJECT_NAME})
+  PKG_CONFIG_USE_DEPENDENCY(${NAME} KineoController)
+  PKG_CONFIG_USE_DEPENDENCY(${NAME} hpp-model)
+  ROSPACK_USE_DEPENDENCY(${NAME} jrl_dynamics_urdf)
 ENDMACRO(ADD_TESTCASE)
 
 # Generated test.
+ADD_TESTCASE(display-robot)
+KINEO_STANDALONE(display-robot)
