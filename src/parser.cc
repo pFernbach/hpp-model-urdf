@@ -21,3 +21,32 @@
  *
  * \brief Implementation of Parser.
  */
+
+#include "hpp/model/urdf/parser.hh"
+
+namespace hpp
+{
+  namespace model
+  {
+    namespace urdf
+    {
+      Parser::Parser ()
+	: dynamicParser_ ()
+      {}
+      
+      Parser::~Parser ()
+      {}
+
+      HumanoidRobotShPtr
+      Parser::parse (const std::string& filename,
+		     const std::string& rootJointName)
+      {
+	CjrlHumanoidDynamicRobot* humanoidDynamicRobot
+	  = dynamicParser_.parse (filename, rootJointName);
+
+	HumanoidRobotShPtr humanoidRobot = HumanoidRobot::create ("robot");
+      }
+
+    } // end of namespace urdf.
+  } // end of namespace model.
+} // end of namespace  hpp.
