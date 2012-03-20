@@ -19,6 +19,7 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
+SET(CXX_DISABLE_WERROR TRUE)
 INCLUDE(cmake/base.cmake)
 INCLUDE(cmake/cpack.cmake)
 INCLUDE(cmake/boost.cmake)
