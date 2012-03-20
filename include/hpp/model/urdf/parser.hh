@@ -24,12 +24,14 @@
 # define HPP_MODEL_URDF_PARSER
 
 # include <string>
+# include <map>
 
+# include <KineoUtility/kitMat4.h>
+
+# include <jrl/dynamics/robotdynamicsimpl.hh>
 # include <jrl/dynamics/urdf/parser.hh>
 
 # include <hpp/model/humanoid-robot.hh>
-
-class CjrlHumanoidDynamicRobot;
 
 namespace hpp
 {
@@ -42,10 +44,20 @@ namespace hpp
       class Parser
       {
       public:
+	typedef std::map<const std::string, hpp::model::JointShPtr> MapHppJoint;
+
 	/// \brief Default constructor.
 	explicit Parser ();
 	/// \brief Destructor.
 	virtual ~Parser ();
+
+	void displayActuatedJoints(std::ostream &os);
+
+	void setSpecificities();
+
+	void displayFoot(CjrlFoot* aFoot,std::ostream& os);
+	void displayHand(CjrlHand* aHand,std::ostream& os);
+	void displayEndEffectors(std::ostream& os);
 
 	/// \brief Parse an URDF file and return a humanoid robot.
 	///
@@ -64,7 +76,46 @@ namespace hpp
 	       const std::string& rootJointName);
 
       private:
+	void createFreeFlyer(const std::string& inName, const CkitMat4& inMat);
+	void createRotation(const std::string& inName, const CkitMat4& inMat);
+	void createTranslation(const std::string& inName,
+			       const CkitMat4& inMat);
+	void createAnchor(const std::string& inName, const CkitMat4& inMat);
+	void setRootJoint(const std::string& inName);
+	void addChildJoint(const std::string& inParent,
+			   const std::string& inChild);
+	void setActuatedJoints();
+	void setEndEffectors();
+	void setFreeFlyerBounds();
+	void setGaze(const std::string& inJointName);
+	void setWaist(const std::string& inJointName);
+	void setChest(const std::string& inJointName);
+	void setHand(CimplObjectFactory* objFactory,
+		     const std::string& JointName,
+		     int side);
+	void setFoot(CimplObjectFactory* objFactory,
+		     const std::string& JointName,
+		     int side);
+
+	CkitMat4 fillMat4(double a00, double a01, double a02, double a03,
+			  double a10, double a11, double a12, double a13,
+			  double a20, double a21, double a22, double a23,
+			  double a30, double a31, double a32, double a33);
+
+	/// \brief Attribute to URDF dyamic robot parser.
 	jrl::dynamics::urdf::Parser dynamicParser_;
+
+	/// \brief Constructed robot attribute.
+	hpp::model::HumanoidRobotShPtr robot_;
+
+	/// \brief Attribute to latest joint created.
+	hpp::model::JointShPtr hppJoint_;
+
+	/// \brief Attribute to hpp joints map.
+	MapHppJoint jointMap_;
+
+	/// \brief Attribute to actuated joints.
+	std::vector<CjrlJoint*> actuatedJoints_;
 
       }; // class Parser
 
