@@ -115,6 +115,26 @@ namespace hpp
 	return mat4;
       }
 
+      void Parser::
+      setActuatedJoints ()
+      {
+	// Get actuated joints from dynamic parser and set attribute.
+	jrl::dynamics::urdf::Parser::MapJrlJoint mapJrlJoint
+	  = dynamicParser_.mapJrlJoint ();
+	actuatedJoints_.resize (mapJrlJoint.size ());
+
+	unsigned i = 0;
+	for (jrl::dynamics::urdf::Parser::MapJrlJoint::iterator it;
+	     it != mapJrlJoint.end ();
+	     ++it)
+	  {
+	    actuatedJoints_[i] = it->second;
+	    ++i;
+	  }
+
+	robot_->setActuatedJoints(actuatedJoints_);
+      }
+
       void
       Parser::displayFoot (CjrlFoot *aFoot, std::ostream &os)
       {
