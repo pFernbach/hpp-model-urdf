@@ -52,7 +52,7 @@ ADD_ROSPACK_DEPENDENCY("jrl_dynamics_urdf")
 
 # Set header files.
 SET(${PROJECT_NAME}_HEADERS
-  parser.hh
+  include/hpp/model/urdf/parser.hh
   )
 
 ADD_SUBDIRECTORY(src)
