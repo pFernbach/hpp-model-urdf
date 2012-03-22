@@ -65,5 +65,5 @@ BOOST_AUTO_TEST_CASE (display_robot)
   // else
   humanoidRobot = parser.parse ("package://hrp2_14_description/urdf/hrp2.urdf", "base_footprint_joint");
 
-  BOOST_CHECK_EQUAL (!!humanoidRobot, 0);
+  BOOST_CHECK_EQUAL (!!humanoidRobot, 1);
 }
