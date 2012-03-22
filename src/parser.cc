@@ -22,6 +22,17 @@
  * \brief Implementation of Parser.
  */
 
+#include <boost/filesystem/fstream.hpp>
+#include <boost/foreach.hpp>
+#include <boost/format.hpp>
+
+#include <LinearMath/btMatrix3x3.h>
+#include <LinearMath/btQuaternion.h>
+
+#include <resource_retriever/retriever.h>
+
+#include <KineoModel/kppSMLinearComponent.h>
+
 #include <hpp/model/anchor-joint.hh>
 #include <hpp/model/freeflyer-joint.hh>
 #include <hpp/model/rotation-joint.hh>
@@ -36,268 +47,804 @@ namespace hpp
     namespace urdf
     {
       Parser::Parser ()
-	: dynamicParser_ (),
-	  robot_(),
-	  hppJoint_ (),
-	  jointMap_ (),
-	  actuatedJoints_ ()
+	: model_ (),
+	  robot_ (),
+	  rootJoint_ (),
+	  jointsMap_ (),
+	  factory_ (),
+	  waistJointName_ (),
+	  chestJointName_ (),
+	  leftWristJointName_ (),
+	  rightWristJointName_ (),
+	  leftHandJointName_ (),
+	  rightHandJointName_ (),
+	  leftAnkleJointName_ (),
+	  rightAnkleJointName_ (),
+	  leftFootJointName_ (),
+	  rightFootJointName_ (),
+	  gazeJointName_ ()
       {}
 
       Parser::~Parser ()
       {}
 
       void
-      Parser::createFreeFlyer (const std::string& name, const CkitMat4& mat)
-      {
-	hppJoint_ = hpp::model::FreeflyerJoint::create (name, mat);
-	jointMap_[name] = hppJoint_;
-      }
-
-      void
-      Parser::createRotation (const std::string& name, const CkitMat4& mat)
-      {
-	hppJoint_ = hpp::model::RotationJoint::create (name, mat);
-	jointMap_[name] = hppJoint_;
-      }
-      void
-      Parser::createTranslation (const std::string& name, const CkitMat4& mat)
-      {
-	hppJoint_ = hpp::model::TranslationJoint::create (name, mat);
-	jointMap_[name] = hppJoint_;
-      }
-
-      void
-      Parser::createAnchor (const std::string& name, const CkitMat4& mat)
-      {
-	hppJoint_ = hpp::model::AnchorJoint::create (name, mat);
-	jointMap_[name] = hppJoint_;
-      }
-
-      void Parser::setRootJoint (const std::string& name)
-      {
-	robot_->setRootJoint (jointMap_[name]);
-      }
-
-      void
-      Parser::addChildJoint (const std::string& parent,
-			     const std::string& child)
-      {
-	jointMap_[parent]->addChildJoint (jointMap_[child]);
-      }
-
-      CkitMat4
-      Parser::fillMat4 (double a00, double a01, double a02, double a03,
-			double a10, double a11, double a12, double a13,
-			double a20, double a21, double a22, double a23,
-			double a30, double a31, double a32, double a33)
-      {
-	CkitMat4 mat4;
-	mat4(0,0) = a00;
-	mat4(0,1) = a01;
-	mat4(0,2) = a02;
-	mat4(0,3) = a03;
-
-	mat4(1,0) = a10;
-	mat4(1,1) = a11;
-	mat4(1,2) = a12;
-	mat4(1,3) = a13;
-
-	mat4(2,0) = a20;
-	mat4(2,1) = a21;
-	mat4(2,2) = a22;
-	mat4(2,3) = a23;
-
-	mat4(3,0) = a30;
-	mat4(3,1) = a31;
-	mat4(3,2) = a32;
-	mat4(3,3) = a33;
-
-	return mat4;
-      }
-
-      void Parser::
-      setActuatedJoints ()
-      {
-	// Get actuated joints from dynamic parser and set attribute.
-	jrl::dynamics::urdf::Parser::MapJrlJoint mapJrlJoint
-	  = dynamicParser_.mapJrlJoint ();
-	actuatedJoints_.resize (mapJrlJoint.size ());
-
-	unsigned i = 0;
-	for (jrl::dynamics::urdf::Parser::MapJrlJoint::iterator it;
-	     it != mapJrlJoint.end ();
-	     ++it)
-	  {
-	    actuatedJoints_[i] = it->second;
-	    ++i;
-	  }
-
-	robot_->setActuatedJoints(actuatedJoints_);
-      }
-
-      void
       Parser::displayFoot (CjrlFoot *aFoot, std::ostream &os)
       {
-	vector3d data;
+      	vector3d data;
 
-	aFoot->getAnklePositionInLocalFrame (data);
-	os << "Ankle position in local frame: " << data << std::endl;
+      	aFoot->getAnklePositionInLocalFrame (data);
+      	os << "Ankle position in local frame: " << data << std::endl;
 
-	double lFootWidth=0.0, lFootDepth=0.0;
-	aFoot->getSoleSize (lFootDepth, lFootWidth);
-	os << "Foot width: " << lFootWidth
-	   << " foot depth: " << lFootDepth << std::endl;
+      	double lFootWidth=0.0, lFootDepth=0.0;
+      	aFoot->getSoleSize (lFootDepth, lFootWidth);
+      	os << "Foot width: " << lFootWidth
+      	   << " foot depth: " << lFootDepth << std::endl;
       }
 
       void
       Parser::displayHand (CjrlHand *aHand, std::ostream &os)
       {
-	vector3d data;
+      	vector3d data;
 
-	aHand->getCenter (data);
-	os << "Center: " << data << std::endl;
+      	aHand->getCenter (data);
+      	os << "Center: " << data << std::endl;
 
-	aHand->getThumbAxis (data);
-	os << "Thumb axis: " << data << std::endl;
+      	aHand->getThumbAxis (data);
+      	os << "Thumb axis: " << data << std::endl;
 
-	aHand->getForeFingerAxis (data);
-	os << "Showing axis: " << data << std::endl;
+      	aHand->getForeFingerAxis (data);
+      	os << "Showing axis: " << data << std::endl;
 
-	aHand->getPalmNormal (data);
-	os << "Palm axis: " << data << std::endl;
+      	aHand->getPalmNormal (data);
+      	os << "Palm axis: " << data << std::endl;
       }
 
       void
       Parser::displayEndEffectors (std::ostream &os)
       {
-	CjrlHand *aHand;
-	aHand = robot_->leftHand ();
-	displayHand(aHand,os);
-	aHand = robot_->rightHand ();
-	displayHand (aHand, os);
+      	CjrlHand *aHand;
+      	aHand = robot_->leftHand ();
+      	displayHand(aHand,os);
+      	aHand = robot_->rightHand ();
+      	displayHand (aHand, os);
 
-	CjrlFoot *aFoot;
-	aFoot = robot_->leftFoot ();
-	displayFoot (aFoot, os);
-	aFoot = robot_->rightFoot ();
-	displayFoot (aFoot, os);
+      	CjrlFoot *aFoot;
+      	aFoot = robot_->leftFoot ();
+      	displayFoot (aFoot, os);
+      	aFoot = robot_->rightFoot ();
+      	displayFoot (aFoot, os);
       }
 
-      void Parser::setFoot (CimplObjectFactory* objFactory,
-			    const std::string& JointName,
-			    int side)
+      void Parser::displayActuatedJoints (std::ostream &os)
       {
-	// FIXME: Get foot specificities from urdf or rcpdf.
-      }
-
-      void
-      Parser::setHand (CimplObjectFactory* objFactory,
-		       const std::string& JointName,
-		       int side)
-      {
-	// FIXME: Get hand specificities from urdf or rcpdf.
-      }
-
-      void
-      Parser::setGaze (const std::string& inJointName)
-      {
-	// FIXME: Get gaze from urdf.
+      	const vectorN currentConfiguration = robot_->currentConfiguration ();
+      	os << "Actuated joints : " ;
+	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
+	for (unsigned int i = 0; i < 40; i++)
+      	  {
+      	    unsigned int riC = actJointsVect[i]->rankInConfiguration ();
+      	    os << currentConfiguration[riC] << " ";
+      	  }
+      	os << std::endl;
       }
 
       void
-      Parser::setWaist (const std::string& inJointName)
+      Parser::findSpecialJoint (const std::string& repName,
+				std::string& jointName)
       {
-	CjrlJoint* waistJoint = jointMap_[inJointName]->jrlJoint ();
-	robot_->waist (waistJoint);
+	UrdfLinkPtrType linkPtr = model_.links_[repName];
+	if (linkPtr)
+	  {
+	    UrdfJointPtrType joint = linkPtr->parent_joint;
+	    if (joint)
+	      jointName = joint->name;
+	  }
       }
 
       void
-      Parser::setChest (const std::string& inJointName)
+      Parser::findSpecialJoints ()
       {
-	CjrlJoint* chestJoint = jointMap_[inJointName]->jrlJoint ();
-	robot_->chest (chestJoint);
+	findSpecialJoint ("BODY", waistJointName_);
+	findSpecialJoint ("torso", chestJointName_);
+	findSpecialJoint ("l_wrist", leftWristJointName_);
+	findSpecialJoint ("r_wrist", rightWristJointName_);
+	findSpecialJoint ("l_gripper", leftHandJointName_);
+	findSpecialJoint ("r_gripper", rightHandJointName_);
+	findSpecialJoint ("l_ankle", leftAnkleJointName_);
+	findSpecialJoint ("r_ankle", rightAnkleJointName_);
+	findSpecialJoint ("l_sole", leftFootJointName_);
+	findSpecialJoint ("r_sole", rightFootJointName_);
+	findSpecialJoint ("gaze", gazeJointName_);
+	//FIXME: we are missing toes in abstract-robot-dynamics for now.
       }
 
       void
-      Parser::setEndEffectors ()
+      Parser::parseJoints (const std::string rootJointName)
       {
-	// FIXME: make robot independant.
-	CimplObjectFactory* objFactory = new CimplObjectFactory ();
-	std::string JointName;
-	// Set feet.
-	JointName = "RLEG_JOINT5";
-	setFoot (objFactory, JointName, -1);
-	JointName = "LLEG_JOINT5";
-	setFoot (objFactory, JointName, 1);
+	// Create free floating joint.
+	// FIXME: position set to identity for now.
+	CkitMat4 position;
+	position.identity ();
+	rootJoint_ = createFreeflyerJoint (rootJointName, position);
+	if (!rootJoint_)
+	  throw std::runtime_error
+	    ("failed to create root joint (free flyer)");
+	robot_->setRootJoint(rootJoint_);
 
-	// Set hands.
-	JointName = "RARM_JOINT5";
-	setHand (objFactory, JointName, -1);
-	JointName = "LARM_JOINT5";
-	setHand (objFactory, JointName, 1);
+	// Iterate through each "true cinematic" joint and create a
+	// corresponding CjrlJoint.
+	for(MapJointType::const_iterator it = model_.joints_.begin();
+	    it != model_.joints_.end(); ++it)
+	  {
+	    position =
+	      getPoseInReferenceFrame("base_footprint_joint", it->first);
+
+	    switch(it->second->type)
+	      {
+	      case ::urdf::Joint::UNKNOWN:
+		throw std::runtime_error
+		  ("parsed joint has UNKNOWN type, this should not happen");
+		break;
+	      case ::urdf::Joint::REVOLUTE:
+		createRotationJoint (it->first, position, it->second->limits);
+		break;
+	      case ::urdf::Joint::CONTINUOUS:
+		createContinuousJoint (it->first, position);
+		break;
+	      case ::urdf::Joint::PRISMATIC:
+		createTranslationJoint (it->first, position,
+					it->second->limits);
+		break;
+	      case ::urdf::Joint::FLOATING:
+		createFreeflyerJoint (it->first, position);
+		break;
+	      case ::urdf::Joint::PLANAR:
+		throw std::runtime_error ("PLANAR joints are not supported");
+		break;
+	      case ::urdf::Joint::FIXED:
+		createAnchorJoint (it->first, position);
+		break;
+	      default:
+		boost::format fmt
+		  ("unknown joint type %1%: should never happen");
+		fmt % (int)it->second->type;
+		throw std::runtime_error (fmt.str ());
+	      }
+	  }
+      }
+
+      std::vector<CjrlJoint*> Parser::actuatedJoints ()
+      {
+	std::vector<CjrlJoint*> jointsVect;
+
+	typedef std::map<std::string, boost::shared_ptr< ::urdf::Joint > >
+	  jointMap_t;
+
+        for(jointMap_t::const_iterator it = model_.joints_.begin ();
+	    it != model_.joints_.end (); ++it)
+	  {
+	    if (!it->second)
+	      throw std::runtime_error ("null joint shared pointer");
+	    if (it->second->type == ::urdf::Joint::UNKNOWN
+		|| it->second->type == ::urdf::Joint::FLOATING
+		|| it->second->type == ::urdf::Joint::FIXED)
+	      continue;
+	    MapHppJoint::const_iterator child = jointsMap_.find (it->first);
+	    if (child == jointsMap_.end () || !child->second)
+	      throw std::runtime_error ("failed to compute actuated joints");
+
+	    // The joints already exists in the vector, do not add it twice.
+	    if (std::find (jointsVect.begin (),
+			   jointsVect.end (),
+			   child->second->jrlJoint ()) != jointsVect.end ())
+	      continue;
+	    jointsVect.push_back (child->second->jrlJoint ());
+	  }
+	return jointsVect;
       }
 
       void
-      Parser::setSpecificities ()
+      Parser::connectJoints (const Parser::JointPtrType& rootJoint)
       {
-	// FIXME: make robot independant.
-	setEndEffectors ();
-	setActuatedJoints ();
+	BOOST_FOREACH (const std::string& childName,
+		       getChildrenJoint (rootJoint->kppJoint ()->name ()))
+	  {
+	    MapHppJoint::const_iterator child = jointsMap_.find (childName);
+	    if (child == jointsMap_.end () && !!child->second)
+	      throw std::runtime_error ("failed to connect joints");
+	    rootJoint->addChildJoint (child->second);
+	    connectJoints (child->second);
+	  }
+      }
 
-	// Set gaze.
-	setGaze (std::string ("HEAD_JOINT1"));
+      void
+      Parser::addBodiesToJoints ()
+      {
+        for(MapHppJoint::const_iterator it = jointsMap_.begin();
+	    it != jointsMap_.end(); ++it)
+	  {
+	    // Retrieve associated URDF joint.
+	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	    if (!joint)
+	      continue;
 
-	// Set Waist.
-	setWaist (std::string ("WAIST"));
+	    // Retrieve joint name.
+	    std::string childLinkName = joint->child_link_name;
 
-	// Set Chest.
-	setChest (std::string ("CHEST_JOINT1"));
+	    // Get child link.
+	    UrdfLinkConstPtrType link = model_.getLink (childLinkName);
+	    if (!link)
+	      throw std::runtime_error ("inconsistent model");
+
+	    // Retrieve inertial information.
+	    boost::shared_ptr< ::urdf::Inertial> inertial =
+	      link->inertial;
+
+	    vector3d localCom (0., 0., 0.);
+	    matrix3d inertiaMatrix;
+	    inertiaMatrix.setIdentity();
+	    double mass = 0.;
+	    if (inertial)
+	      {
+		//FIXME: properly re-orient the frames.
+		localCom[0] = inertial->origin.position.x;
+		localCom[1] = inertial->origin.position.y;
+		localCom[2] = inertial->origin.position.z;
+
+		mass = inertial->mass;
+
+		inertiaMatrix (0, 0) = inertial->ixx;
+		inertiaMatrix (0, 1) = inertial->ixy;
+		inertiaMatrix (0, 2) = inertial->ixz;
+
+		inertiaMatrix (1, 0) = inertial->ixy;
+		inertiaMatrix (1, 1) = inertial->iyy;
+		inertiaMatrix (1, 2) = inertial->iyz;
+
+		inertiaMatrix (2, 0) = inertial->ixz;
+		inertiaMatrix (2, 1) = inertial->iyz;
+		inertiaMatrix (2, 2) = inertial->izz;
+	      }
+	    else
+	      std::cerr
+		<< "WARNING: missing inertial information in model"
+		<< std::endl;
+
+	    // Create dynamic body and fill inertial information.
+	    CjrlBody* jrlBody = factory_.createBody ();
+	    jrlBody->mass (mass);
+	    jrlBody->localCenterOfMass (localCom);
+	    jrlBody->inertiaMatrix (inertiaMatrix);
+
+	    // Link dynamic body to dynamic joint.
+	    it->second->jrlJoint ()->setLinkedBody (*jrlBody);
+
+	    // Create geometric body and fill geometry information.
+	    BodyPtrType body = hpp::model::Body::create (childLinkName);
+	    // FIXME: Use visual and collision information and add
+	    // correct solid component.
+
+	    // Link geometric body to joint.
+	    KIT_DYNAMIC_PTR_CAST(CkwsJoint, it->second)
+	      ->setAttachedBody (body);
+	  }
       }
 
       void
       Parser::setFreeFlyerBounds ()
       {
-	CjrlJoint * jrlRootJoint = robot_->getRootJoint ()->jrlJoint ();
-	hpp::model::JointShPtr hppRootJoint = robot_->getRootJoint ();
+      	CjrlJoint * jrlRootJoint = robot_->getRootJoint ()->jrlJoint ();
+      	hpp::model::JointShPtr hppRootJoint = robot_->getRootJoint ();
 
-	/* Translations */
-	for(unsigned int i = 0; i < 3; i++) {
-	  jrlRootJoint->lowerBound (i,
-				    - std::numeric_limits<double>::infinity ());
-	  jrlRootJoint->upperBound (i,
-				    std::numeric_limits<double>::infinity ());
-	}
-	/* Rx, Ry */
-	for(unsigned int i = 3; i < 5; i++){
-	  hppRootJoint->isBounded (i, true);
-	  hppRootJoint->lowerBound (i, -M_PI/4);
-	  hppRootJoint->upperBound (i, M_PI/4);
-	}
-	/* Rz */
-	jrlRootJoint->lowerBound (5, -std::numeric_limits<double>::infinity ());
-	jrlRootJoint->upperBound (5, std::numeric_limits<double>::infinity ());
+      	/* Translations */
+      	for(unsigned int i = 0; i < 3; i++) {
+      	  jrlRootJoint->lowerBound (i,
+      				    - std::numeric_limits<double>::infinity ());
+      	  jrlRootJoint->upperBound (i,
+      				    std::numeric_limits<double>::infinity ());
+      	}
+      	/* Rx, Ry */
+      	for(unsigned int i = 3; i < 5; i++){
+      	  hppRootJoint->isBounded (i, true);
+      	  hppRootJoint->lowerBound (i, -M_PI/4);
+      	  hppRootJoint->upperBound (i, M_PI/4);
+      	}
+      	/* Rz */
+      	jrlRootJoint->lowerBound (5, -std::numeric_limits<double>::infinity ());
+      	jrlRootJoint->upperBound (5, std::numeric_limits<double>::infinity ());
       }
 
-      void Parser::displayActuatedJoints (std::ostream &os)
+      namespace
       {
-	const vectorN currentConfiguration = robot_->currentConfiguration ();
-	os << "Actuated joints : " ;
-	for (unsigned int i = 0; i < 40; i++)
-	  {
-	    unsigned int riC = actuatedJoints_[i]->rankInConfiguration ();
-	    os << currentConfiguration[riC] << " ";
-	  }
-	os << std::endl;
+	vector3d
+	vector4dTo3d (vector4d v)
+	{
+	  return vector3d (v[0], v[1], v[2]);
+	}
+      } // end of anonymous namespace.
+
+      void
+      Parser::computeHandsInformation
+      (MapHppJoint::const_iterator& hand,
+       MapHppJoint::const_iterator& wrist,
+       vector3d& center,
+       vector3d& thumbAxis,
+       vector3d& foreFingerAxis,
+       vector3d& palmNormal) const
+      {
+	matrix4d world_M_hand =
+	  hand->second->jrlJoint ()->initialPosition ();
+	matrix4d world_M_wrist =
+	  wrist->second->jrlJoint ()->initialPosition ();
+	matrix4d wrist_M_world;
+	world_M_wrist.Inversion (wrist_M_world);
+
+	matrix4d wrist_M_hand = wrist_M_world * world_M_hand;
+
+	for (unsigned i = 0; i < 3; ++i)
+	  center[i] = wrist_M_hand (i, 3);
+
+	thumbAxis = vector4dTo3d
+	  (wrist_M_hand * vector4d (0., 0., 1., 1.));
+	foreFingerAxis = vector4dTo3d
+	  (wrist_M_hand * vector4d (1., 0., 0., 1.));
+	palmNormal = vector4dTo3d
+	  (wrist_M_hand * vector4d (0., 1., 0., 1.));
       }
 
-      HumanoidRobotShPtr
+      void
+      Parser::fillHandsAndFeet ()
+      {
+	MapHppJoint::const_iterator leftHand =
+	  jointsMap_.find (leftHandJointName_);
+	MapHppJoint::const_iterator rightHand =
+	  jointsMap_.find (rightHandJointName_);
+	MapHppJoint::const_iterator leftWrist =
+	  jointsMap_.find (leftWristJointName_);
+	MapHppJoint::const_iterator rightWrist =
+	  jointsMap_.find (rightWristJointName_);
+
+	MapHppJoint::const_iterator leftFoot =
+	  jointsMap_.find (leftFootJointName_);
+	MapHppJoint::const_iterator rightFoot =
+	  jointsMap_.find (rightFootJointName_);
+	MapHppJoint::const_iterator leftAnkle =
+	  jointsMap_.find (leftAnkleJointName_);
+	MapHppJoint::const_iterator rightAnkle =
+	  jointsMap_.find (rightAnkleJointName_);
+
+	if (leftHand != jointsMap_.end () && leftWrist != jointsMap_.end ())
+	  {
+	    HandPtrType hand
+	      = factory_.createHand (leftWrist->second->jrlJoint ());
+
+	    vector3d center (0., 0., 0.);
+	    vector3d thumbAxis (0., 0., 0.);
+	    vector3d foreFingerAxis (0., 0., 0.);
+	    vector3d palmNormal (0., 0., 0.);
+
+	    computeHandsInformation
+	      (leftHand, leftWrist,
+	       center, thumbAxis, foreFingerAxis, palmNormal);
+
+	    hand->setCenter (center);
+	    hand->setThumbAxis (thumbAxis);
+	    hand->setForeFingerAxis (foreFingerAxis);
+	    hand->setPalmNormal (palmNormal);
+	    robot_->leftHand (hand);
+	  }
+
+	if (rightHand != jointsMap_.end () && rightWrist != jointsMap_.end ())
+	  {
+	    HandPtrType hand
+	      = factory_.createHand (rightWrist->second->jrlJoint ());
+
+	    vector3d center (0., 0., 0.);
+	    vector3d thumbAxis (0., 0., 0.);
+	    vector3d foreFingerAxis (0., 0., 0.);
+	    vector3d palmNormal (0., 0., 0.);
+
+	    computeHandsInformation
+	      (leftHand, leftWrist,
+	       center, thumbAxis, foreFingerAxis, palmNormal);
+
+	    hand->setCenter (center);
+	    hand->setThumbAxis (thumbAxis);
+	    hand->setForeFingerAxis (foreFingerAxis);
+	    hand->setPalmNormal (palmNormal);
+
+	    robot_->rightHand (hand);
+	  }
+
+	if (leftFoot != jointsMap_.end () && leftAnkle != jointsMap_.end ())
+	  {
+	    FootPtrType foot
+	      = factory_.createFoot (leftAnkle->second->jrlJoint ());
+	    foot->setAnklePositionInLocalFrame
+	      (computeAnklePositionInLocalFrame (leftFoot, leftAnkle));
+
+	    //FIXME: to be determined using robot contact points definition.
+	    foot->setSoleSize (0., 0.);
+
+	    robot_->leftFoot (foot);
+	  }
+
+	if (rightFoot != jointsMap_.end () && rightAnkle != jointsMap_.end ())
+	  {
+	    FootPtrType foot
+	      = factory_.createFoot (rightAnkle->second->jrlJoint ());
+	    foot->setAnklePositionInLocalFrame
+	      (computeAnklePositionInLocalFrame (rightFoot, rightAnkle));
+
+	    //FIXME: to be determined using robot contact points definition.
+	    foot->setSoleSize (0., 0.);
+
+	    robot_->rightFoot (foot);
+	  }
+      }
+
+      std::vector<std::string>
+      Parser::getChildrenJoint (const std::string& jointName)
+      {
+	std::vector<std::string> result;
+	getChildrenJoint (jointName, result);
+	return result;
+      }
+
+      void
+      Parser::getChildrenJoint (const std::string& jointName,
+				std::vector<std::string>& result)
+      {
+	typedef boost::shared_ptr< ::urdf::Joint> jointPtr_t;
+
+	boost::shared_ptr<const ::urdf::Joint> joint =
+	  model_.getJoint (jointName);
+
+	if (!joint)
+	  {
+	    boost::format fmt
+	      ("failed to retrieve children joints of joint %s");
+	    fmt % jointName;
+	    throw std::runtime_error (fmt.str ());
+	  }
+
+	boost::shared_ptr<const ::urdf::Link> childLink =
+	  model_.getLink (joint->child_link_name);
+
+	if (!childLink)
+	  throw std::runtime_error ("failed to retrieve children link");
+
+       	const std::vector<jointPtr_t>& jointChildren =
+	  childLink->child_joints;
+
+	BOOST_FOREACH (const jointPtr_t& joint, jointChildren)
+	  {
+	    if (jointsMap_.count(joint->name) > 0)
+	      result.push_back (joint->name);
+	    else
+	      getChildrenJoint (joint->name, result);
+	  }
+      }
+
+      Parser::JointPtrType
+      Parser::createFreeflyerJoint (const std::string& name,
+				    const CkitMat4& mat)
+      {
+	if (jointsMap_.find (name) != jointsMap_.end ())
+	  throw std::runtime_error ("duplicated rotation joint");
+
+      	JointPtrType joint = hpp::model::FreeflyerJoint::create (name, mat);
+	for (unsigned i = 0; i < 6; ++i)
+	  joint->isBounded (i, false);
+      	jointsMap_[name] = joint;
+	return joint;
+      }
+
+      Parser::JointPtrType
+      Parser::createRotationJoint (const std::string& name,
+				   const CkitMat4& mat,
+				   const Parser::UrdfJointLimitsPtrType& limits)
+      {
+	if (jointsMap_.find (name) != jointsMap_.end ())
+	  throw std::runtime_error ("duplicated rotation joint");
+
+      	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
+	if (limits)
+	  {
+	    joint->isBounded (0, true);
+	    joint->bounds (0, limits->lower, limits->upper);
+	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
+	  }
+      	jointsMap_[name] = joint;
+	return joint;
+      }
+
+      Parser::JointPtrType
+      Parser::createContinuousJoint (const std::string& name,
+				     const CkitMat4& mat)
+      {
+	if (jointsMap_.find (name) != jointsMap_.end ())
+	  throw std::runtime_error ("duplicated rotation joint");
+
+      	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
+	joint->isBounded (0, false);
+      	jointsMap_[name] = joint;
+	return joint;
+      }
+
+      Parser::JointPtrType
+      Parser::createTranslationJoint (const std::string& name,
+				      const CkitMat4& mat,
+				      const Parser::
+				      UrdfJointLimitsPtrType& limits)
+      {
+	if (jointsMap_.find (name) != jointsMap_.end ())
+	  throw std::runtime_error ("duplicated rotation joint");
+
+      	JointPtrType joint = hpp::model::TranslationJoint::create (name, mat);
+	if (limits)
+	  {
+	    joint->isBounded (0, true);
+	    joint->bounds (0, limits->lower, limits->upper);
+	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
+	  }
+      	jointsMap_[name] = joint;
+	return joint;
+      }
+
+      Parser::JointPtrType
+      Parser::createAnchorJoint (const std::string& name, const CkitMat4& mat)
+      {
+	if (jointsMap_.find (name) != jointsMap_.end ())
+	  throw std::runtime_error ("duplicated rotation joint");
+
+      	JointPtrType joint = hpp::model::AnchorJoint::create (name, mat);
+      	jointsMap_[name] = joint;
+	return joint;
+      }
+
+      Parser::JointPtrType
+      Parser::findJoint (const std::string& jointName)
+      {
+	Parser::MapHppJoint::const_iterator it = jointsMap_.find (jointName);
+	if (it == jointsMap_.end ())
+	  {
+	    Parser::JointPtrType ptr;
+	    ptr.reset ();
+	    return ptr;
+	  }
+	return it->second;
+      }
+
+      CkitMat4
+      Parser::poseToMatrix (::urdf::Pose p)
+      {
+	CkitMat4 t;
+
+	// Fill rotation part.
+	btQuaternion q (p.rotation.x, p.rotation.y,
+			p.rotation.z, p.rotation.w);
+	btMatrix3x3 rotationMatrix (q);
+	for (unsigned i = 0; i < 3; ++i)
+	  for (unsigned j = 0; j < 3; ++j)
+	    t(i, j) = rotationMatrix[i][j];
+
+	// Fill translation part.
+	t(0, 3) = p.position.x;
+	t(1, 3) = p.position.y;
+	t(2, 3) = p.position.z;
+	t(3, 3) = 1.;
+
+	t(3, 0) = 0;
+	t(3, 1) = 0;
+	t(3, 2) = 0.;
+
+	return t;
+      }
+
+      vector3d
+      Parser::computeAnklePositionInLocalFrame
+      (MapHppJoint::const_iterator& foot,
+       MapHppJoint::const_iterator& ankle) const
+      {
+	matrix4d world_M_foot =
+	  foot->second->jrlJoint ()->initialPosition ();
+	matrix4d world_M_ankle =
+	  ankle->second->jrlJoint ()->initialPosition ();
+	matrix4d foot_M_world;
+	world_M_foot.Inversion (foot_M_world);
+
+	matrix4d foot_M_ankle = foot_M_world * world_M_ankle;
+	return vector3d (foot_M_ankle (0, 3),
+			 foot_M_ankle (1, 3),
+			 foot_M_ankle (2, 3));
+      }
+
+      namespace
+      {
+	/// \brief Convert joint orientation to standard
+	/// jrl-dynamics accepted orientation.
+	///
+	/// abstract-robot-dynamics do not contain any information
+	/// about around which axis a rotation joint rotates.
+	/// On the opposite, it makes the assumption it is around the X
+	/// axis. We have to make sure this is the case here.
+	///
+	/// We use Gram-Schmidt process to compute the rotation matrix.
+	///
+	/// [1] http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+	CkitMat4
+	normalizeFrameOrientation (Parser::UrdfJointConstPtrType urdfJoint)
+	{
+	  if (!urdfJoint)
+	    throw std::runtime_error
+	      ("invalid joint in normalizeFrameOrientation");
+	  CkitMat4 result;
+	  result.identity ();
+
+	  vector3d x (urdfJoint->axis.x,
+		      urdfJoint->axis.y,
+		      urdfJoint->axis.z);
+	  x.normalize ();
+
+	  vector3d y (0., 0., 0.);
+	  vector3d z (0., 0., 0.);
+
+	  unsigned smallestComponent = 0;
+	  for (unsigned i = 0; i < 3; ++i)
+	    if (std::fabs(x[i]) < std::fabs(x[smallestComponent]))
+	      smallestComponent = i;
+
+	  y[smallestComponent] = 1.;
+	  z = x ^ y;
+	  y = z ^ x;
+	  // (x, y, z) is an orthonormal basis.
+
+	  for (unsigned i = 0; i < 3; ++i)
+	    {
+	      result (i, 0) = x[i];
+	      result (i, 1) = y[i];
+	      result (i, 2) = z[i];
+	    }
+
+	  return result;
+	}
+      } // end of anonymous namespace.
+
+      CkitMat4
+      Parser::getPoseInReferenceFrame (const std::string& referenceJointName,
+				       const std::string& currentJointName)
+      {
+	if (referenceJointName == currentJointName)
+	  return poseToMatrix
+	    (model_.getJoint
+	     (currentJointName)->parent_to_joint_origin_transform);
+
+	// Retrieve corresponding joint in URDF tree.
+	UrdfJointConstPtrType joint = model_.getJoint (currentJointName);
+	if (!joint)
+	  throw std::runtime_error
+	    ("failed to retrieve parent while computing joint position");
+
+	// Get transform from parent link to joint.
+	::urdf::Pose jointToParentTransform =
+	    joint->parent_to_joint_origin_transform;
+
+	CkitMat4 transform = poseToMatrix (jointToParentTransform);
+
+	// Normalize orientation if this is a rotation joint.
+	if (joint->type == ::urdf::Joint::REVOLUTE)
+	  transform = normalizeFrameOrientation (joint) * transform;
+
+	// Get parent joint name.
+	std::string parentLinkName = joint->parent_link_name;
+	UrdfLinkConstPtrType parentLink = model_.getLink (parentLinkName);
+
+	if (!parentLink)
+	  return transform;
+	UrdfJointConstPtrType parentJoint = parentLink->parent_joint;
+	if (!parentJoint)
+	  return transform;
+
+	// Compute previous transformation with current one.
+	transform =
+	  getPoseInReferenceFrame (referenceJointName,
+				   parentJoint->name) * transform;
+	return transform;
+      }
+
+      Parser::RobotPtrType
       Parser::parse (const std::string& filename,
 		     const std::string& rootJointName)
       {
-	CjrlHumanoidDynamicRobot* humanoidDynamicRobot
-	  = dynamicParser_.parse (filename, rootJointName);
+	resource_retriever::Retriever resourceRetriever;
 
-	HumanoidRobotShPtr humanoidRobot = HumanoidRobot::create ("robot");
+	resource_retriever::MemoryResource resource =
+	  resourceRetriever.get(filename);
+	std::string robotDescription;
+	robotDescription.resize(resource.size);
+	unsigned i = 0;
+	for (; i < resource.size; ++i)
+	  robotDescription[i] = resource.data.get()[i];
+	return parseStream (robotDescription, rootJointName);
+      }
+
+      Parser::RobotPtrType
+      Parser::parseStream (const std::string& robotDescription,
+			   const std::string& rootJointName)
+      {
+	// Reset the attributes to avoid problems when loading
+	// multiple robots using the same object.
+	model_.clear ();
+	robot_ = hpp::model::HumanoidRobot::create (model_.getName ());
+	rootJoint_.reset ();
+	jointsMap_.clear ();
+
+	// Parse urdf model.
+	if (!model_.initString (robotDescription))
+	  throw std::runtime_error ("failed to open URDF file."
+				    " Is the filename location correct?");
+
+	// Get names of special joints.
+	findSpecialJoints ();
+
+	// Look for joints in the URDF model tree.
+	parseJoints (rootJointName);
+	if (!rootJoint_)
+	  throw std::runtime_error ("failed to parse actuated joints");
+
+	// Set model actuated joints.
+	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
+	robot_->setActuatedJoints (actJointsVect);
+
+	// Create the kinematic tree.
+	// We iterate over the URDF root joints to connect them to the
+	// root link that we added "manually" before. Then we iterate
+	// in the whole tree using the connectJoints method.
+	boost::shared_ptr<const ::urdf::Link> rootLink = model_.getRoot ();
+	if (!rootLink)
+	  throw std::runtime_error ("URDF model is missing a root link");
+
+	typedef boost::shared_ptr<const ::urdf::Joint> JointPtr_t;
+	BOOST_FOREACH (const JointPtr_t& joint, rootLink->child_joints)
+	  {
+	    if (!joint)
+	      throw std::runtime_error ("null shared pointer in URDF model");
+	    MapHppJoint::const_iterator child = jointsMap_.find (joint->name);
+	    if (child == jointsMap_.end () || !child->second)
+	      throw std::runtime_error ("missing node in kinematics tree");
+	    rootJoint_->addChildJoint (child->second);
+	    connectJoints (child->second);
+	  }
+
+	// Look for special joints and attach them to the model.
+	robot_->waist (findJoint (waistJointName_)->jrlJoint ());
+	robot_->chest (findJoint (chestJointName_)->jrlJoint ());
+	robot_->leftWrist (findJoint (leftWristJointName_)->jrlJoint ());
+	robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
+	robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
+	robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
+	robot_->gazeJoint (findJoint (rightFootJointName_)->jrlJoint ());
+
+	// Add corresponding body (link) to each joint.
+	addBodiesToJoints ();
+
+	// Initialize dynamic part.
+	robot_->initialize();
+
+	// Here we need to use joints initial positions. Make sure to
+	// call this *after* initializating the structure.
+	fillHandsAndFeet ();
+
+	// Set default steering method that will be used by roadmap
+	// builders.
+	robot_->steeringMethodComponent (CkppSMLinearComponent::create ());
+
+	//Set bounds on freeflyer dofs
+	setFreeFlyerBounds ();
+
+	return robot_;
       }
 
     } // end of namespace urdf.

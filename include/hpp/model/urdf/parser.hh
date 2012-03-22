@@ -26,11 +26,11 @@
 # include <string>
 # include <map>
 
-# include <KineoUtility/kitMat4.h>
+# include <urdf/model.h>
 
-# include <jrl/dynamics/robotdynamicsimpl.hh>
 # include <jrl/dynamics/urdf/parser.hh>
 
+# include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
 namespace hpp
@@ -44,7 +44,22 @@ namespace hpp
       class Parser
       {
       public:
-	typedef std::map<const std::string, hpp::model::JointShPtr> MapHppJoint;
+	typedef boost::shared_ptr< ::urdf::Link> UrdfLinkPtrType;
+	typedef boost::shared_ptr< ::urdf::Joint> UrdfJointPtrType;
+	typedef boost::shared_ptr< ::urdf::JointLimits> UrdfJointLimitsPtrType;
+	typedef boost::shared_ptr<const ::urdf::Link> UrdfLinkConstPtrType;
+	typedef boost::shared_ptr<const ::urdf::Joint> UrdfJointConstPtrType;
+
+	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
+	typedef hpp::model::JointShPtr JointPtrType;
+	typedef hpp::model::BodyShPtr BodyPtrType;
+	typedef CjrlHand* HandPtrType;
+	typedef CjrlFoot* FootPtrType;
+
+	/// \brief Map of abstract robot dynamics compatible joints.
+	typedef std::map<const std::string, JointPtrType> MapHppJoint;
+	/// \brief Map of URDF joints.
+	typedef std::map<std::string, UrdfJointPtrType> MapJointType;
 
 	/// \brief Default constructor.
 	explicit Parser ();
@@ -52,9 +67,6 @@ namespace hpp
 	virtual ~Parser ();
 
 	void displayActuatedJoints(std::ostream &os);
-
-	void setSpecificities();
-
 	void displayFoot(CjrlFoot* aFoot,std::ostream& os);
 	void displayHand(CjrlHand* aHand,std::ostream& os);
 	void displayEndEffectors(std::ostream& os);
@@ -71,51 +83,141 @@ namespace hpp
 	///
 	/// \param resourceName resource name using the
 	/// resource_retriever format.
-	HumanoidRobotShPtr
+	RobotPtrType
 	parse (const std::string& resourceName,
 	       const std::string& rootJointName);
 
+	/// \brief Parse an URDF sent as a stream and return a
+	/// humanoid robot.
+	RobotPtrType
+	parseStream (const std::string& robotDescription,
+		     const std::string& rootJointName);
+
+      protected:
+	/// \brief Retrieve joint name attached to a particular link.
+	void
+	findSpecialJoint (const std::string& linkName,
+			  std::string& jointName);
+
+	/// \brief Find special joints using REP 120.
+	///
+	/// This is not direct as abstract-robot-dynamics needs
+	/// joints where as REP 120 deals with frames/robot links.
+	/// We have to use the REP naming standard to identify the
+	/// links and then retrieve the attached joints name.
+	void
+	findSpecialJoints ();
+
+	/// \brief Parse URDF model and get joints.
+	///
+	/// Each joint in the URDF model is used to build the
+	/// corresponding hpp::model::JointShPtr object.
+	void
+	parseJoints (const std::string rootJointName);
+
+	/// \brief Get actuated joints.
+	std::vector<CjrlJoint*>
+	actuatedJoints();
+
+	/// \brief Connect recursively joints to their children.
+	void
+	connectJoints (const JointPtrType& rootJoint);
+
+	/// \brief Parse bodies and add them to joints.
+	void addBodiesToJoints();
+
+	/// \brief Set free-flyer joint bounds for roamdap builders.
+	void
+	setFreeFlyerBounds ();
+
+	/// \brief Compute hands information.
+	void
+	computeHandsInformation (MapHppJoint::const_iterator& hand,
+				 MapHppJoint::const_iterator& wrist,
+				 vector3d& center,
+				 vector3d& thumbAxis,
+				 vector3d& foreFingerAxis,
+				 vector3d& palmNormal) const;
+
+	/// \brief Fill hands and feet.
+	void
+	fillHandsAndFeet ();
+
+	// returns, in a vector, the children of a joint, or a
+	// subchildren if no children si present in the actuated
+	// joints map.
+	std::vector<std::string>
+	getChildrenJoint (const std::string& jointName);
+
+	void getChildrenJoint (const std::string& jointName,
+			       std::vector<std::string>& result);
+
+	/// \brief Create free-flyer joint and add it to joints map.
+	JointPtrType
+	createFreeflyerJoint (const std::string& name, const CkitMat4& mat);
+
+	/// \brief Create rotation joint and add it to joints map.
+	JointPtrType
+	createRotationJoint (const std::string& name,
+			     const CkitMat4& mat,
+			     const UrdfJointLimitsPtrType& limits);
+
+	/// \brief Create continuous joint and add it to joints map.
+	JointPtrType
+	createContinuousJoint (const std::string& name,
+			       const CkitMat4& mat);
+
+	/// \brief Create translation joint and add it to joints map.
+	JointPtrType
+	createTranslationJoint (const std::string& name,
+				const CkitMat4& mat,
+				const UrdfJointLimitsPtrType& limits);
+
+	/// \brief Create anchor joint and add it to joints map.
+	JointPtrType
+	createAnchorJoint (const std::string& name, const CkitMat4& mat);
+
+	/// \brief Get joint by looking for string in joints map
+	/// attribute.
+	JointPtrType
+	findJoint (const std::string& jointName);
+
+	/// \brief Compute ankle position in foot frame.
+	vector3d
+	computeAnklePositionInLocalFrame
+	(MapHppJoint::const_iterator& foot,
+	 MapHppJoint::const_iterator& ankle) const;
+
+	/// \brief Convert URDF pose to CkitMat4 transformation.
+	CkitMat4
+	poseToMatrix (::urdf::Pose p);
+
+	/// \brief Get joint position in given reference frame.
+	CkitMat4
+	getPoseInReferenceFrame(const std::string& referenceJointName,
+				const std::string& currentJointName);
+
       private:
-	void createFreeFlyer(const std::string& inName, const CkitMat4& inMat);
-	void createRotation(const std::string& inName, const CkitMat4& inMat);
-	void createTranslation(const std::string& inName,
-			       const CkitMat4& inMat);
-	void createAnchor(const std::string& inName, const CkitMat4& inMat);
-	void setRootJoint(const std::string& inName);
-	void addChildJoint(const std::string& inParent,
-			   const std::string& inChild);
-	void setActuatedJoints();
-	void setEndEffectors();
-	void setFreeFlyerBounds();
-	void setGaze(const std::string& inJointName);
-	void setWaist(const std::string& inJointName);
-	void setChest(const std::string& inJointName);
-	void setHand(CimplObjectFactory* objFactory,
-		     const std::string& JointName,
-		     int side);
-	void setFoot(CimplObjectFactory* objFactory,
-		     const std::string& JointName,
-		     int side);
+	::urdf::Model model_;
+	RobotPtrType robot_;
+	JointPtrType rootJoint_;
+	MapHppJoint jointsMap_;
+	dynamicsJRLJapan::ObjectFactory factory_;
 
-	CkitMat4 fillMat4(double a00, double a01, double a02, double a03,
-			  double a10, double a11, double a12, double a13,
-			  double a20, double a21, double a22, double a23,
-			  double a30, double a31, double a32, double a33);
-
-	/// \brief Attribute to URDF dyamic robot parser.
-	jrl::dynamics::urdf::Parser dynamicParser_;
-
-	/// \brief Constructed robot attribute.
-	hpp::model::HumanoidRobotShPtr robot_;
-
-	/// \brief Attribute to latest joint created.
-	hpp::model::JointShPtr hppJoint_;
-
-	/// \brief Attribute to hpp joints map.
-	MapHppJoint jointMap_;
-
-	/// \brief Attribute to actuated joints.
-	std::vector<CjrlJoint*> actuatedJoints_;
+	/// \brief Special joints names.
+	/// \{
+	std::string waistJointName_;
+	std::string chestJointName_;
+	std::string leftWristJointName_;
+	std::string rightWristJointName_;
+	std::string leftHandJointName_;
+	std::string rightHandJointName_;
+	std::string leftAnkleJointName_;
+	std::string rightAnkleJointName_;
+	std::string leftFootJointName_;
+	std::string rightFootJointName_;
+	std::string gazeJointName_;
+	/// \}
 
       }; // class Parser
 
