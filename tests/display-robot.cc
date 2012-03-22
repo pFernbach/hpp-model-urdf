@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE (display_robot)
   // 					  "base_footprint_joint");
   //   }
   // else
-  humanoidRobot = parser.parse ("/home/aelkhour/profiles/kitelab-2.06-i686-linux-ubuntu-10.04/src/unstable/ros/stacks/hrp2/hrp2_14_description/urdf/hrp2.urdf", "base_footprint_joint");
+  humanoidRobot = parser.parse ("package://hrp2_14_description/urdf/hrp2.urdf", "base_footprint_joint");
 
   BOOST_CHECK_EQUAL (!!humanoidRobot, 0);
 }
