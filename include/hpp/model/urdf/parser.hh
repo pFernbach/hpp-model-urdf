@@ -126,6 +126,14 @@ namespace hpp
 	/// \brief Parse bodies and add them to joints.
 	void addBodiesToJoints();
 
+	/// \brief Add solid component to body.
+	///
+	/// The visual and collision geometries attached to the link
+	/// are used to create the appropriate Kite solid component.
+	void
+	addSolidComponentToBody (const UrdfLinkConstPtrType& link,
+				 const BodyPtrType& body);
+
 	/// \brief Set free-flyer joint bounds for roamdap builders.
 	void
 	setFreeFlyerBounds ();

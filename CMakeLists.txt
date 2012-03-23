@@ -45,6 +45,7 @@ ENDIF(CMAKE_BUILD_TYPE MATCHES "DEBUG")
 SEARCH_FOR_BOOST()
 
 # Search for dependecies.
+ADD_REQUIRED_DEPENDENCY("assimp")
 ADD_REQUIRED_DEPENDENCY("KineoController")
 ADD_REQUIRED_DEPENDENCY("hpp-model >= 2.1")
 ADD_ROSPACK_DEPENDENCY("urdf_parser")
@@ -53,6 +54,7 @@ ADD_ROSPACK_DEPENDENCY("jrl_dynamics_urdf")
 # Set header files.
 SET(${PROJECT_NAME}_HEADERS
   include/hpp/model/urdf/parser.hh
+  include/hpp/model/urdf/polyhedron-loader.hh
   )
 
 ADD_SUBDIRECTORY(src)

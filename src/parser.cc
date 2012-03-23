@@ -32,6 +32,8 @@
 #include <resource_retriever/retriever.h>
 
 #include <KineoModel/kppSMLinearComponent.h>
+#include <KineoModel/kppSolidComponentRef.h>
+#include <KineoKCDModel/kppKCDPolyhedron.h>
 
 #include <hpp/model/anchor-joint.hh>
 #include <hpp/model/freeflyer-joint.hh>
@@ -39,6 +41,7 @@
 #include <hpp/model/translation-joint.hh>
 
 #include "hpp/model/urdf/parser.hh"
+#include "hpp/model/urdf/polyhedron-loader.hh"
 
 namespace hpp
 {
@@ -320,14 +323,60 @@ namespace hpp
 	    // Link dynamic body to dynamic joint.
 	    it->second->jrlJoint ()->setLinkedBody (*jrlBody);
 
-	    // Create geometric body and fill geometry information.
-	    BodyPtrType body = hpp::model::Body::create (childLinkName);
-	    // FIXME: Use visual and collision information and add
-	    // correct solid component.
-
 	    // Link geometric body to joint.
+	    BodyPtrType body = hpp::model::Body::create (childLinkName);
 	    KIT_DYNAMIC_PTR_CAST(CkwsJoint, it->second)
 	      ->setAttachedBody (body);
+
+	    // Create geometric body and fill geometry information.
+	    if (link->visual && link->collision)
+	      addSolidComponentToBody (link, body);
+	  }
+      }
+
+      void
+      Parser::addSolidComponentToBody (const UrdfLinkConstPtrType& link,
+				       const BodyPtrType& body)
+      {
+	boost::shared_ptr< ::urdf::Visual> visual =
+	  link->visual;
+	boost::shared_ptr< ::urdf::Collision> collision =
+	  link->collision;
+
+	// Handle the case where visual geometry is a mesh and
+	// collision geometry is a mesh.
+	if (visual->geometry->type == ::urdf::Geometry::MESH
+	    && collision->geometry->type == ::urdf::Geometry::MESH)
+	  {
+	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
+	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
+	    boost::shared_ptr< ::urdf::Mesh> collisionGeometry
+	      = dynamic_pointer_cast< ::urdf::Mesh> (collision->geometry);
+	    std::string visualFilename = visualGeometry->filename;
+	    std::string collisionFilename = collisionGeometry->filename;
+
+	    // FIXME: We assume for now that visual and collision
+	    // meshes are the same.
+	    if (visualFilename != collisionFilename)
+	      {
+		boost::format fmt
+		  ("Unhandled:visual and collision meshes not the same for %s");
+		fmt % link->name;
+		throw std::runtime_error (fmt.str ());
+	      }
+
+	    // Create Kite polyhedron component by parsing Collada
+	    // file.
+	    CkppKCDPolyhedronShPtr polyhedron
+	      = CkppKCDPolyhedron::create (link->name);
+	    loadPolyhedronFromResource (visualFilename, polyhedron);
+	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+
+	    // Add solid component and activate distance computation.
+	    CkitMat4 position = poseToMatrix (visual->origin);
+	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),
+	    			  position,
+	    			  true);
 	  }
       }
 
