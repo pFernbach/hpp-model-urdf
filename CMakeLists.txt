@@ -57,6 +57,8 @@ SET(${PROJECT_NAME}_HEADERS
   include/hpp/model/urdf/polyhedron-loader.hh
   )
 
+PKG_CONFIG_APPEND_LIBS(${PROJECT_NAME})
+
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(tests)
 
