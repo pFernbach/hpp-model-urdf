@@ -28,8 +28,6 @@
 
 # include <urdf/model.h>
 
-# include <jrl/dynamics/urdf/parser.hh>
-
 # include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
