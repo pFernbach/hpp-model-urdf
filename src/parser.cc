@@ -132,6 +132,57 @@ namespace hpp
       	os << std::endl;
       }
 
+      namespace
+      {
+	/// \brief Convert joint orientation to standard
+	/// jrl-dynamics accepted orientation.
+	///
+	/// abstract-robot-dynamics do not contain any information
+	/// about around which axis a rotation joint rotates.
+	/// On the opposite, it makes the assumption it is around the X
+	/// axis. We have to make sure this is the case here.
+	///
+	/// We use Gram-Schmidt process to compute the rotation matrix.
+	///
+	/// [1] http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+	CkitMat4
+	normalizeFrameOrientation (Parser::UrdfJointConstPtrType urdfJoint)
+	{
+	  if (!urdfJoint)
+	    throw std::runtime_error
+	      ("invalid joint in normalizeFrameOrientation");
+	  CkitMat4 result;
+	  result.identity ();
+
+	  vector3d x (urdfJoint->axis.x,
+		      urdfJoint->axis.y,
+		      urdfJoint->axis.z);
+	  x.normalize ();
+
+	  vector3d y (0., 0., 0.);
+	  vector3d z (0., 0., 0.);
+
+	  unsigned smallestComponent = 0;
+	  for (unsigned i = 0; i < 3; ++i)
+	    if (std::fabs(x[i]) < std::fabs(x[smallestComponent]))
+	      smallestComponent = i;
+
+	  y[smallestComponent] = 1.;
+	  z = x ^ y;
+	  y = z ^ x;
+	  // (x, y, z) is an orthonormal basis.
+
+	  for (unsigned i = 0; i < 3; ++i)
+	    {
+	      result (i, 0) = x[i];
+	      result (i, 1) = y[i];
+	      result (i, 2) = z[i];
+	    }
+
+	  return result;
+	}
+      } // end of anonymous namespace.
+
       void
       Parser::findSpecialJoint (const std::string& repName,
 				std::string& jointName)
@@ -714,57 +765,6 @@ namespace hpp
 			 foot_M_ankle (1, 3),
 			 foot_M_ankle (2, 3));
       }
-
-      namespace
-      {
-	/// \brief Convert joint orientation to standard
-	/// jrl-dynamics accepted orientation.
-	///
-	/// abstract-robot-dynamics do not contain any information
-	/// about around which axis a rotation joint rotates.
-	/// On the opposite, it makes the assumption it is around the X
-	/// axis. We have to make sure this is the case here.
-	///
-	/// We use Gram-Schmidt process to compute the rotation matrix.
-	///
-	/// [1] http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
-	CkitMat4
-	normalizeFrameOrientation (Parser::UrdfJointConstPtrType urdfJoint)
-	{
-	  if (!urdfJoint)
-	    throw std::runtime_error
-	      ("invalid joint in normalizeFrameOrientation");
-	  CkitMat4 result;
-	  result.identity ();
-
-	  vector3d x (urdfJoint->axis.x,
-		      urdfJoint->axis.y,
-		      urdfJoint->axis.z);
-	  x.normalize ();
-
-	  vector3d y (0., 0., 0.);
-	  vector3d z (0., 0., 0.);
-
-	  unsigned smallestComponent = 0;
-	  for (unsigned i = 0; i < 3; ++i)
-	    if (std::fabs(x[i]) < std::fabs(x[smallestComponent]))
-	      smallestComponent = i;
-
-	  y[smallestComponent] = 1.;
-	  z = x ^ y;
-	  y = z ^ x;
-	  // (x, y, z) is an orthonormal basis.
-
-	  for (unsigned i = 0; i < 3; ++i)
-	    {
-	      result (i, 0) = x[i];
-	      result (i, 1) = y[i];
-	      result (i, 2) = z[i];
-	    }
-
-	  return result;
-	}
-      } // end of anonymous namespace.
 
       CkitMat4
       Parser::getPoseInReferenceFrame (const std::string& referenceJointName,
