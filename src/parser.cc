@@ -183,6 +183,11 @@ namespace hpp
 	    position =
 	      getPoseInReferenceFrame("base_footprint_joint", it->first);
 
+	    // Normalize orientation if this is a rotation joint.
+	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	    if (joint->type == ::urdf::Joint::REVOLUTE)
+	      position = position * normalizeFrameOrientation (joint);
+
 	    switch(it->second->type)
 	      {
 	      case ::urdf::Joint::UNKNOWN:
@@ -781,10 +786,6 @@ namespace hpp
 	    joint->parent_to_joint_origin_transform;
 
 	CkitMat4 transform = poseToMatrix (jointToParentTransform);
-
-	// Normalize orientation if this is a rotation joint.
-	if (joint->type == ::urdf::Joint::REVOLUTE)
-	  transform = normalizeFrameOrientation (joint) * transform;
 
 	// Get parent joint name.
 	std::string parentLinkName = joint->parent_link_name;
