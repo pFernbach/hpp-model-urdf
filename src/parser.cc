@@ -428,8 +428,21 @@ namespace hpp
 	    loadPolyhedronFromResource (visualFilename, polyhedron);
 	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
+	    // Compute body position in world frame.
+	    CkitMat4 linkPositionInParentJoint = poseToMatrix (visual->origin);
+	    CkitMat4 parentJointInWorld
+	      = findJoint (link->parent_joint->name)->kppJoint ()
+	      ->kwsJoint ()->currentPosition ();
+
+	    // Denormalize orientation if this is a rotation joint.
+	    UrdfJointConstPtrType joint = model_.getJoint (link->parent_joint->name);
+	    if (link->parent_joint->type == ::urdf::Joint::REVOLUTE)
+	      parentJointInWorld = parentJointInWorld
+		* normalizeFrameOrientation (link->parent_joint).inverse ();
+
+	    CkitMat4 position = parentJointInWorld * linkPositionInParentJoint;
+
 	    // Add solid component and activate distance computation.
-	    CkitMat4 position = poseToMatrix (visual->origin);
 	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),
 	    			  position,
 	    			  true);
