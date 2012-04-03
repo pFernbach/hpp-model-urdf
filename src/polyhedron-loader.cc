@@ -179,6 +179,7 @@ namespace hpp
       // Mostly stolen from gazebo
       void buildMesh (const aiScene* scene,
 		      const aiNode* node,
+		      std::vector<unsigned>& subMeshIndexes,
 		      const CkppPolyhedronShPtr& mesh)
       {
 	if (!node)
@@ -207,6 +208,7 @@ namespace hpp
 	    aiMesh* input_mesh = scene->mMeshes[node->mMeshes[i]];
 
 	    unsigned oldNbPoints = mesh->countPoints ();
+	    unsigned oldNbTriangles = mesh->countTriangles ();
 
 	    // Add the vertices
 	    for (uint32_t j = 0; j < input_mesh->mNumVertices; j++)
@@ -225,11 +227,17 @@ namespace hpp
 				   oldNbPoints + face.mIndices[1],
 				   oldNbPoints + face.mIndices[2]);
 	      }
+
+	    // Save submesh triangles indexes interval.
+	    if (subMeshIndexes.size () == 0)
+	      subMeshIndexes.push_back (0);
+
+	    subMeshIndexes.push_back (oldNbTriangles + input_mesh->mNumFaces);
 	  }
 
 	for (uint32_t i=0; i < node->mNumChildren; ++i)
 	  {
-	    buildMesh(scene, node->mChildren[i], mesh);
+	    buildMesh(scene, node->mChildren[i], subMeshIndexes, mesh);
 	  }
       }
 
@@ -240,137 +248,109 @@ namespace hpp
       // Mostly cribbed from gazebo
       void loadMaterialsForMesh (const std::string& resource_path,
 				 const aiScene* scene,
-				 const CkppPolyhedronShPtr& polyhedron)
+				 const std::vector<unsigned> subMeshIndexes,
+				 const CkppPolyhedronShPtr& mesh)
       {
-	// std::vector<Ogre::MaterialPtr> material_lookup;
+	std::vector<CkppMaterial> materials;
 
-	// for (uint32_t i = 0; i < scene->mNumMaterials; i++)
-	//   {
-	//     std::stringstream ss;
-	//     ss << resource_path << "Material" << i;
-	//     Ogre::MaterialPtr mat = Ogre::MaterialManager::getSingleton().create(ss.str(), ROS_PACKAGE_NAME, true);
-	//     material_lookup.push_back(mat);
+	// Get all materials from scene and store them in a vector.
+	for (uint32_t i = 0; i < scene->mNumMaterials; i++)
+	  {
+	    aiMaterial *amat = scene->mMaterials[i];
 
-	//     Ogre::Technique* tech = mat->getTechnique(0);
-	//     Ogre::Pass* pass = tech->getPass(0);
+	    CkppMaterial material;
+	    CkppColor diffuse (CkppColor (1.0, 1.0, 1.0, 1.0));
+	    CkppColor specular (CkppColor (1.0, 1.0, 1.0, 1.0));
+	    CkppColor ambient (CkppColor (0.5, 0.5, 0.5, 1.0));
 
-	//     aiMaterial *amat = scene->mMaterials[i];
+	    for (uint32_t j=0; j < amat->mNumProperties; j++)
+	      {
+		aiMaterialProperty *prop = amat->mProperties[j];
+		std::string propKey = prop->mKey.data;
 
-	//     Ogre::ColourValue diffuse(1.0, 1.0, 1.0, 1.0);
-	//     Ogre::ColourValue specular(1.0, 1.0, 1.0, 1.0);
-	//     Ogre::ColourValue ambient(0.5, 0.5, 0.5, 1.0);
+		if (propKey == "$tex.file")
+		  {
+		    // FIXME: not supported
+		    aiString texName;
+		    aiTextureMapping mapping;
+		    uint32_t uvIndex;
+		    amat->GetTexture(aiTextureType_DIFFUSE,0, &texName, &mapping, &uvIndex);
 
-	//     for (uint32_t j=0; j < amat->mNumProperties; j++)
-	//       {
-	// 	aiMaterialProperty *prop = amat->mProperties[j];
-	// 	std::string propKey = prop->mKey.data;
+		    // Assume textures are in paths relative to the mesh
+		    std::string texture_path = fs::path(resource_path).parent_path().string() + "/" + texName.data;
+		    loadTexture(texture_path);
+		  }
+		else if (propKey == "$clr.diffuse")
+		  {
+		    aiColor3D clr;
+		    amat->Get(AI_MATKEY_COLOR_DIFFUSE, clr);
+		    diffuse.red (clr.r);
+		    diffuse.green (clr.g);
+		    diffuse.blue (clr.b);
+		  }
+		else if (propKey == "$clr.ambient")
+		  {
+		    aiColor3D clr;
+		    amat->Get(AI_MATKEY_COLOR_AMBIENT, clr);
 
-	// 	if (propKey == "$tex.file")
-	// 	  {
-	// 	    aiString texName;
-	// 	    aiTextureMapping mapping;
-	// 	    uint32_t uvIndex;
-	// 	    amat->GetTexture(aiTextureType_DIFFUSE,0, &texName, &mapping, &uvIndex);
+		    // Most of are DAE files don't have ambient color defined
+		    if (clr.r > 0 && clr.g > 0 && clr.b > 0)
+		      {
+			ambient.red (clr.r);
+			ambient.green (clr.g);
+			ambient.blue (clr.b);
+		      }
+		  }
+		else if (propKey == "$clr.specular")
+		  {
+		    aiColor3D clr;
+		    amat->Get(AI_MATKEY_COLOR_SPECULAR, clr);
+		    specular.red (clr.r);
+		    specular.green (clr.g);
+		    specular.blue (clr.b);
+		  }
+		else if (propKey == "$clr.emissive")
+		  {
+		    // FIXME: not supported
+		    aiColor3D clr;
+		    amat->Get(AI_MATKEY_COLOR_EMISSIVE, clr);
+		  }
+		else if (propKey == "$clr.opacity")
+		  {
+		    float o;
+		    amat->Get(AI_MATKEY_OPACITY, o);
+		    diffuse.alpha (o);
+		    specular.alpha (o);
+		    ambient.alpha (o);
+		  }
+		else if (propKey == "$mat.shininess")
+		  {
+		    float s;
+		    amat->Get(AI_MATKEY_SHININESS, s);
+		    material.shininess (s);
+		  }
+		else if (propKey == "$mat.shadingm")
+		  {
+		    // FIXME: not supported
+		    int model;
+		    amat->Get(AI_MATKEY_SHADING_MODEL, model);
+		  }
+	      }
 
-	// 	    // Assume textures are in paths relative to the mesh
-	// 	    std::string texture_path = fs::path(resource_path).parent_path().string() + "/" + texName.data;
-	// 	    loadTexture(texture_path);
-	// 	    Ogre::TextureUnitState* tu = pass->createTextureUnitState();
-	// 	    tu->setTextureName(texture_path);
-	// 	  }
-	// 	else if (propKey == "$clr.diffuse")
-	// 	  {
-	// 	    aiColor3D clr;
-	// 	    amat->Get(AI_MATKEY_COLOR_DIFFUSE, clr);
-	// 	    diffuse = Ogre::ColourValue(clr.r, clr.g, clr.b);
-	// 	  }
-	// 	else if (propKey == "$clr.ambient")
-	// 	  {
-	// 	    aiColor3D clr;
-	// 	    amat->Get(AI_MATKEY_COLOR_AMBIENT, clr);
+	    material.diffuseColor (diffuse);
+	    material.specularColor (specular);
+	    material.ambientColor (ambient);
 
-	// 	    // Most of are DAE files don't have ambient color defined
-	// 	    if (clr.r > 0 && clr.g > 0 && clr.b > 0)
-	// 	      {
-	// 		ambient = Ogre::ColourValue(clr.r, clr.g, clr.b);
-	// 	      }
-	// 	  }
-	// 	else if (propKey == "$clr.specular")
-	// 	  {
-	// 	    aiColor3D clr;
-	// 	    amat->Get(AI_MATKEY_COLOR_SPECULAR, clr);
-	// 	    specular = Ogre::ColourValue(clr.r, clr.g, clr.b);
-	// 	  }
-	// 	else if (propKey == "$clr.emissive")
-	// 	  {
-	// 	    aiColor3D clr;
-	// 	    amat->Get(AI_MATKEY_COLOR_EMISSIVE, clr);
-	// 	    mat->setSelfIllumination(clr.r, clr.g, clr.b);
-	// 	  }
-	// 	else if (propKey == "$clr.opacity")
-	// 	  {
-	// 	    float o;
-	// 	    amat->Get(AI_MATKEY_OPACITY, o);
-	// 	    diffuse.a = o;
-	// 	  }
-	// 	else if (propKey == "$mat.shininess")
-	// 	  {
-	// 	    float s;
-	// 	    amat->Get(AI_MATKEY_SHININESS, s);
-	// 	    mat->setShininess(s);
-	// 	  }
-	// 	else if (propKey == "$mat.shadingm")
-	// 	  {
-	// 	    int model;
-	// 	    amat->Get(AI_MATKEY_SHADING_MODEL, model);
-	// 	    switch(model)
-	// 	      {
-	// 	      case aiShadingMode_Flat:
-	// 		mat->setShadingMode(Ogre::SO_FLAT);
-	// 		break;
-	// 	      case aiShadingMode_Phong:
-	// 		mat->setShadingMode(Ogre::SO_PHONG);
-	// 		break;
-	// 	      case aiShadingMode_Gouraud:
-	// 	      default:
-	// 		mat->setShadingMode(Ogre::SO_GOURAUD);
-	// 		break;
-	// 	      }
-	// 	  }
-	//       }
+	    materials.push_back (material);
+	  }
 
-	//     int mode = aiBlendMode_Default;
-	//     amat->Get(AI_MATKEY_BLEND_FUNC, mode);
-	//     switch(mode)
-	//       {
-	//       case aiBlendMode_Additive:
-	// 	mat->setSceneBlending(Ogre::SBT_ADD);
-	// 	break;
-	//       case aiBlendMode_Default:
-	//       default:
-	// 	{
-	// 	  if (diffuse.a < 0.99)
-	// 	    {
-	// 	      pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
-	// 	    }
-	// 	  else
-	// 	    {
-	// 	      pass->setSceneBlending(Ogre::SBT_REPLACE);
-	// 	    }
-	// 	}
-	// 	break;
-	//       }
-
-	//     mat->setAmbient(ambient);
-	//     mat->setDiffuse(diffuse);
-	//     specular.a = diffuse.a;
-	//     mat->setSpecular(specular);
-	//   }
-
-	// for (uint32_t i = 0; i < mesh->getNumSubMeshes(); ++i)
-	//   {
-	//     mesh->getSubMesh(i)->setMaterialName(material_lookup[scene->mMeshes[i]->mMaterialIndex]->getName());
-	//   }
+	assert (subMeshIndexes.size () - 1 == materials.size ()
+		&& "SubMeshIndexes and materials size mismatch");
+	for (uint32_t i = 0; i < subMeshIndexes.size () - 1; ++i)
+	  {
+	    mesh->setMaterial (subMeshIndexes[i], subMeshIndexes[i + 1] - 1,
+			       materials[scene->mMeshes[i]->mMaterialIndex]);
+	  }
       }
 
       void
@@ -386,9 +366,10 @@ namespace hpp
 	    throw std::runtime_error (fmt.str ());
 	  }
 
-	buildMesh(scene, scene->mRootNode, mesh);
+	std::vector<unsigned> subMeshIndexes;
+	buildMesh(scene, scene->mRootNode, subMeshIndexes, mesh);
 
-	loadMaterialsForMesh(name, scene, mesh);
+	loadMaterialsForMesh(name, scene, subMeshIndexes, mesh);
       }
 
       void
@@ -408,7 +389,7 @@ namespace hpp
 
 	meshFromAssimpScene (resource_path, scene, polyhedron);
       }
-      
+
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace  hpp.
