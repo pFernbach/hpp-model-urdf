@@ -206,7 +206,7 @@ namespace hpp
 	  {
 	    aiMesh* input_mesh = scene->mMeshes[node->mMeshes[i]];
 
-	    // mesh->reserveNPoints (input_mesh->mNumVertices);
+	    unsigned oldNbPoints = mesh->countPoints ();
 
 	    // Add the vertices
 	    for (uint32_t j = 0; j < input_mesh->mNumVertices; j++)
@@ -221,9 +221,9 @@ namespace hpp
 	      {
 		aiFace& face = input_mesh->mFaces[j];
 		// FIXME: can add only triangular faces.
-		mesh->addTriangle (face.mIndices[0],
-				   face.mIndices[1],
-				   face.mIndices[2]);
+		mesh->addTriangle (oldNbPoints + face.mIndices[0],
+				   oldNbPoints + face.mIndices[1],
+				   oldNbPoints + face.mIndices[2]))
 	      }
 	  }
 
