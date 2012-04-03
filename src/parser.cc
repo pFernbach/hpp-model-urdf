@@ -124,7 +124,7 @@ namespace hpp
       	const vectorN currentConfiguration = robot_->currentConfiguration ();
       	os << "Actuated joints : " ;
 	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
-	for (unsigned int i = 0; i < 40; i++)
+	for (unsigned int i = 0; i < actJointsVect.size (); i++)
       	  {
       	    unsigned int riC = actJointsVect[i]->rankInConfiguration ();
       	    os << currentConfiguration[riC] << " ";
