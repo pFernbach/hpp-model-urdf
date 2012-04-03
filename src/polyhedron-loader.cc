@@ -223,7 +223,7 @@ namespace hpp
 		// FIXME: can add only triangular faces.
 		mesh->addTriangle (oldNbPoints + face.mIndices[0],
 				   oldNbPoints + face.mIndices[1],
-				   oldNbPoints + face.mIndices[2]))
+				   oldNbPoints + face.mIndices[2]);
 	      }
 	  }
 
