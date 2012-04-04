@@ -346,7 +346,6 @@ namespace hpp
 	    double mass = 0.;
 	    if (inertial)
 	      {
-		//FIXME: properly re-orient the frames.
 		localCom[0] = inertial->origin.position.x;
 		localCom[1] = inertial->origin.position.y;
 		localCom[2] = inertial->origin.position.z;
@@ -364,6 +363,38 @@ namespace hpp
 		inertiaMatrix (2, 0) = inertial->ixz;
 		inertiaMatrix (2, 1) = inertial->iyz;
 		inertiaMatrix (2, 2) = inertial->izz;
+
+		// Use joint normalization to properly reorient
+		// inertial frames.
+		if (link->parent_joint->type == ::urdf::Joint::REVOLUTE)
+		  {
+		    CkitMat4 normalizedJointTransform
+		      = normalizeFrameOrientation (link->parent_joint);
+
+		    CkitMat4 localComTransform;
+		    localComTransform.identity ();
+		    localComTransform(0, 3) = localCom[0];
+		    localComTransform(1, 3) = localCom[1];
+		    localComTransform(2, 3) = localCom[2];
+		    localComTransform = normalizedJointTransform.inverse ()
+		      * localComTransform;
+		    localCom[0] = localComTransform(0,3);
+		    localCom[1] = localComTransform(1,3);
+		    localCom[2] = localComTransform(2,3);
+
+		    CkitMat4 inertiaMatrixTransform;
+		    inertiaMatrixTransform.identity ();
+		    for (unsigned i = 0; i < 3; ++i)
+		      for (unsigned j = 0; j < 3; ++j)
+			inertiaMatrixTransform(i, j) = inertiaMatrix(i, j);
+		    inertiaMatrixTransform
+		      = normalizedJointTransform.inverse ()
+		      * inertiaMatrixTransform
+		      * normalizedJointTransform;
+		    for (unsigned i = 0; i < 3; ++i)
+		      for (unsigned j = 0; j < 3; ++j)
+			inertiaMatrix(i, j) = inertiaMatrixTransform(i, j);
+		  }
 	      }
 	    else
 	      std::cerr
