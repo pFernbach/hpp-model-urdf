@@ -681,7 +681,12 @@ namespace hpp
 				    const CkitMat4& mat)
       {
 	if (jointsMap_.find (name) != jointsMap_.end ())
-	  throw std::runtime_error ("duplicated rotation joint");
+	  {
+	    boost::format fmt
+	      ("duplicated free flyer joint %s");
+	    fmt % name;
+	    throw std::runtime_error (fmt.str ());
+	  }
 
       	JointPtrType joint = hpp::model::FreeflyerJoint::create (name, mat);
 	for (unsigned i = 0; i < 6; ++i)
@@ -696,7 +701,12 @@ namespace hpp
 				   const Parser::UrdfJointLimitsPtrType& limits)
       {
 	if (jointsMap_.find (name) != jointsMap_.end ())
-	  throw std::runtime_error ("duplicated rotation joint");
+	  {
+	    boost::format fmt
+	      ("duplicated rotation joint %s");
+	    fmt % name;
+	    throw std::runtime_error (fmt.str ());
+	  }
 
       	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
 	if (limits)
@@ -714,7 +724,12 @@ namespace hpp
 				     const CkitMat4& mat)
       {
 	if (jointsMap_.find (name) != jointsMap_.end ())
-	  throw std::runtime_error ("duplicated rotation joint");
+	  {
+	    boost::format fmt
+	      ("duplicated continous joint %s");
+	    fmt % name;
+	    throw std::runtime_error (fmt.str ());
+	  }
 
       	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
 	joint->isBounded (0, false);
@@ -729,7 +744,12 @@ namespace hpp
 				      UrdfJointLimitsPtrType& limits)
       {
 	if (jointsMap_.find (name) != jointsMap_.end ())
-	  throw std::runtime_error ("duplicated rotation joint");
+	  {
+	    boost::format fmt
+	      ("duplicated translation joint %s");
+	    fmt % name;
+	    throw std::runtime_error (fmt.str ());
+	  }
 
       	JointPtrType joint = hpp::model::TranslationJoint::create (name, mat);
 	if (limits)
@@ -746,7 +766,12 @@ namespace hpp
       Parser::createAnchorJoint (const std::string& name, const CkitMat4& mat)
       {
 	if (jointsMap_.find (name) != jointsMap_.end ())
-	  throw std::runtime_error ("duplicated rotation joint");
+	  {
+	    boost::format fmt
+	      ("duplicated anchor joint %s");
+	    fmt % name;
+	    throw std::runtime_error (fmt.str ());
+	  }
 
       	JointPtrType joint = hpp::model::AnchorJoint::create (name, mat);
       	jointsMap_[name] = joint;
