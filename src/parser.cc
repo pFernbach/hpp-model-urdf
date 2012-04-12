@@ -236,7 +236,9 @@ namespace hpp
 
 	    // Normalize orientation if this is a rotation joint.
 	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
-	    if (joint->type == ::urdf::Joint::REVOLUTE)
+	    if (joint->type == ::urdf::Joint::REVOLUTE
+		|| joint->type == ::urdf::Joint::CONTINUOUS
+		|| joint->type == ::urdf::Joint::PRISMATIC)
 	      position = position * normalizeFrameOrientation (joint);
 
 	    switch(it->second->type)
@@ -366,7 +368,9 @@ namespace hpp
 
 		// Use joint normalization to properly reorient
 		// inertial frames.
-		if (link->parent_joint->type == ::urdf::Joint::REVOLUTE)
+		if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+		    || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+		    || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
 		  {
 		    CkitMat4 normalizedJointTransform
 		      = normalizeFrameOrientation (link->parent_joint);
@@ -467,7 +471,9 @@ namespace hpp
 
 	    // Denormalize orientation if this is a rotation joint.
 	    UrdfJointConstPtrType joint = model_.getJoint (link->parent_joint->name);
-	    if (link->parent_joint->type == ::urdf::Joint::REVOLUTE)
+	    if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+		|| link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+		|| link->parent_joint->type == ::urdf::Joint::PRISMATIC)
 	      parentJointInWorld = parentJointInWorld
 		* normalizeFrameOrientation (link->parent_joint).inverse ();
 
