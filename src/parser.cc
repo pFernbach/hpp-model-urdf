@@ -944,13 +944,34 @@ namespace hpp
 	  }
 
 	// Look for special joints and attach them to the model.
-	robot_->waist (findJoint (waistJointName_)->jrlJoint ());
-	robot_->chest (findJoint (chestJointName_)->jrlJoint ());
-	robot_->leftWrist (findJoint (leftWristJointName_)->jrlJoint ());
-	robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
-	robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
-	robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
-	robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
+	if (!findJoint (waistJointName_))
+	  std::cout << "WARNING: no waist joint found" << std::endl;
+	else
+	  robot_->waist (findJoint (waistJointName_)->jrlJoint ());
+	if (!findJoint (chestJointName_))
+	  std::cout << "WARNING: no chest joint found" << std::endl;
+	else
+	  robot_->chest (findJoint (chestJointName_)->jrlJoint ());
+	if (!findJoint (leftWristJointName_))
+	  std::cout << "WARNING: no left wrist joint found" << std::endl;
+	else
+	  robot_->leftWrist (findJoint (leftWristJointName_)->jrlJoint ());
+	if (!findJoint (rightWristJointName_))
+	  std::cout << "WARNING: no right wrist joint found" << std::endl;
+	else
+	  robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
+	if (!findJoint (leftAnkleJointName_))
+	  std::cout << "WARNING: no left ankle joint found" << std::endl;
+	else
+	  robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
+	if (!findJoint (rightAnkleJointName_))
+	  std::cout << "WARNING: no right ankle joint found" << std::endl;
+	else
+	  robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
+	if (!findJoint (rightFootJointName_))
+	  std::cout << "WARNING: no right ankle joint found" << std::endl;
+	else
+	  robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
 
 	// Add corresponding body (link) to each joint.
 	addBodiesToJoints ();
