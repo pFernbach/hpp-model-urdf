@@ -267,7 +267,7 @@ namespace hpp
 	    position =
 	      getPoseInReferenceFrame("base_footprint_joint", it->first);
 
-	    // Normalize orientation if this is a rotation joint.
+	    // Normalize orientation if this is an actuated joint.
 	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
 	    if (joint->type == ::urdf::Joint::REVOLUTE
 		|| joint->type == ::urdf::Joint::CONTINUOUS
@@ -502,7 +502,7 @@ namespace hpp
 	      = findJoint (link->parent_joint->name)->kppJoint ()
 	      ->kwsJoint ()->currentPosition ();
 
-	    // Denormalize orientation if this is a rotation joint.
+	    // Denormalize orientation if this is an actuated joint.
 	    UrdfJointConstPtrType joint = model_.getJoint (link->parent_joint->name);
 	    if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
 		|| link->parent_joint->type == ::urdf::Joint::CONTINUOUS
