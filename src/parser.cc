@@ -950,7 +950,7 @@ namespace hpp
 	robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
 	robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
 	robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
-	robot_->gazeJoint (findJoint (rightFootJointName_)->jrlJoint ());
+	robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
 
 	// Add corresponding body (link) to each joint.
 	addBodiesToJoints ();
