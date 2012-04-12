@@ -129,8 +129,13 @@ namespace hpp
 	void addBodiesToJoints();
 
 	/// \brief compute body absolute position.
+	///
+	/// \param link link for which absolute position is computed
+	/// \param pose pose in local from, i.e origin of visual or
+	/// collision node
 	CkitMat4
-	computeBodyAbsolutePosition (const UrdfLinkConstPtrType& link);
+	computeBodyAbsolutePosition (const UrdfLinkConstPtrType& link,
+				     const ::urdf::Pose& pose);
 
 	/// \brief Add solid component to body.
 	///

@@ -462,9 +462,9 @@ namespace hpp
 
       CkitMat4
       Parser::computeBodyAbsolutePosition
-      (const Parser::UrdfLinkConstPtrType& link)
+      (const Parser::UrdfLinkConstPtrType& link, const ::urdf::Pose& pose)
       {
-	CkitMat4 linkPositionInParentJoint = poseToMatrix (link->visual->origin);
+	CkitMat4 linkPositionInParentJoint = poseToMatrix (pose);
 	CkitMat4 parentJointInWorld
 	  = findJoint (link->parent_joint->name)->kppJoint ()
 	  ->kwsJoint ()->currentPosition ();
@@ -521,7 +521,8 @@ namespace hpp
 	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link);
+	    CkitMat4 position = computeBodyAbsolutePosition (link,
+							     visual->origin);
 
 	    // Add solid component and activate distance computation.
 	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),
@@ -549,7 +550,8 @@ namespace hpp
 					 32, true, true);
 
 	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link);
+	    CkitMat4 position = computeBodyAbsolutePosition (link,
+							     visual->origin);
 
 	    // Apply additional transformation as cylinders in Kite
 	    // are oriented along the x axis, while cylinders in urdf
