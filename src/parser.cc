@@ -34,6 +34,8 @@
 #include <KineoModel/kppSMLinearComponent.h>
 #include <KineoModel/kppSolidComponentRef.h>
 #include <KineoKCDModel/kppKCDPolyhedron.h>
+#include <KineoKCDModel/kppKCDCylinder.h>
+#include <KineoKCDModel/kppKCDBox.h>
 
 #include <hpp/model/anchor-joint.hh>
 #include <hpp/model/freeflyer-joint.hh>
@@ -523,6 +525,69 @@ namespace hpp
 
 	    // Add solid component and activate distance computation.
 	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),
+				  position,
+				  true);
+	  }
+
+	// Handle the case where visual geometry is a cylinder and
+	// collision geometry is a cylinder.
+	if (visual->geometry->type == ::urdf::Geometry::CYLINDER
+	    && collision->geometry->type == ::urdf::Geometry::CYLINDER)
+	  {
+	    boost::shared_ptr< ::urdf::Cylinder> visualGeometry
+	      = dynamic_pointer_cast< ::urdf::Cylinder> (visual->geometry);
+	    boost::shared_ptr< ::urdf::Cylinder> collisionGeometry
+	      = dynamic_pointer_cast< ::urdf::Cylinder> (collision->geometry);
+
+	    // FIXME: check whether visual and collision cylinder are the same.
+	    double length = visualGeometry->length;
+	    double radius = visualGeometry->radius;
+
+	    // Create Kite cylinder component.
+	    CkppKCDCylinderShPtr cylinder
+	      = CkppKCDCylinder::create (link->name, radius, radius, length,
+					 32, true, true);
+
+	    // Compute body position in world frame.
+	    CkitMat4 position = computeBodyAbsolutePosition (link);
+
+	    // Apply additional transformation as cylinders in Kite
+	    // are oriented along the x axis, while cylinders in urdf
+	    // are oriented along the z axis.
+	    CkitMat4 zTox;
+	    zTox.rotateY (M_PI / 2);
+	    position = position * zTox;
+
+	    // Add solid component and activate distance computation.
+	    body->addInnerObject (CkppSolidComponentRef::create (cylinder),
+	    			  position,
+	    			  true);
+	  }
+
+	// Handle the case where visual geometry is a box and
+	// collision geometry is a box.
+	if (visual->geometry->type == ::urdf::Geometry::BOX
+	    && collision->geometry->type == ::urdf::Geometry::BOX)
+	  {
+	    boost::shared_ptr< ::urdf::Box> visualGeometry
+	      = dynamic_pointer_cast< ::urdf::Box> (visual->geometry);
+	    boost::shared_ptr< ::urdf::Box> collisionGeometry
+	      = dynamic_pointer_cast< ::urdf::Box> (collision->geometry);
+
+	    // FIXME: check whether visual and collision boxes are the same.
+	    double x = visualGeometry->dim.x;
+	    double y = visualGeometry->dim.y;
+	    double z = visualGeometry->dim.z;
+
+	    // Create Kite box component.
+	    CkppKCDBoxShPtr box
+	      = CkppKCDBox::create (link->name, x, y, z);
+
+	    // Compute body position in world frame.
+	    CkitMat4 position = computeBodyAbsolutePosition (link);
+
+	    // Add solid component and activate distance computation.
+	    body->addInnerObject (CkppSolidComponentRef::create (box),
 	    			  position,
 	    			  true);
 	  }
