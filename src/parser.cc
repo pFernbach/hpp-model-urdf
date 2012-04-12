@@ -458,6 +458,28 @@ namespace hpp
 	  }
       }
 
+      CkitMat4
+      Parser::computeBodyAbsolutePosition
+      (const Parser::UrdfLinkConstPtrType& link)
+      {
+	CkitMat4 linkPositionInParentJoint = poseToMatrix (link->visual->origin);
+	CkitMat4 parentJointInWorld
+	  = findJoint (link->parent_joint->name)->kppJoint ()
+	  ->kwsJoint ()->currentPosition ();
+
+	// Denormalize orientation if this is an actuated joint.
+	UrdfJointConstPtrType joint
+	  = model_.getJoint (link->parent_joint->name);
+	if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+	    || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+	    || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
+	  parentJointInWorld = parentJointInWorld
+	    * normalizeFrameOrientation (link->parent_joint).inverse ();
+
+	CkitMat4 position = parentJointInWorld * linkPositionInParentJoint;
+	return position;
+      }
+
       void
       Parser::addSolidComponentToBody (const UrdfLinkConstPtrType& link,
 				       const BodyPtrType& body)
@@ -497,20 +519,7 @@ namespace hpp
 	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
-	    CkitMat4 linkPositionInParentJoint = poseToMatrix (visual->origin);
-	    CkitMat4 parentJointInWorld
-	      = findJoint (link->parent_joint->name)->kppJoint ()
-	      ->kwsJoint ()->currentPosition ();
-
-	    // Denormalize orientation if this is an actuated joint.
-	    UrdfJointConstPtrType joint = model_.getJoint (link->parent_joint->name);
-	    if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
-		|| link->parent_joint->type == ::urdf::Joint::CONTINUOUS
-		|| link->parent_joint->type == ::urdf::Joint::PRISMATIC)
-	      parentJointInWorld = parentJointInWorld
-		* normalizeFrameOrientation (link->parent_joint).inverse ();
-
-	    CkitMat4 position = parentJointInWorld * linkPositionInParentJoint;
+	    CkitMat4 position = computeBodyAbsolutePosition (link);
 
 	    // Add solid component and activate distance computation.
 	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),

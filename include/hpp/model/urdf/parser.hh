@@ -128,6 +128,10 @@ namespace hpp
 	/// \brief Parse bodies and add them to joints.
 	void addBodiesToJoints();
 
+	/// \brief compute body absolute position.
+	CkitMat4
+	computeBodyAbsolutePosition (const UrdfLinkConstPtrType& link);
+
 	/// \brief Add solid component to body.
 	///
 	/// The visual and collision geometries attached to the link
