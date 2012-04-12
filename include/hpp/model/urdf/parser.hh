@@ -106,6 +106,10 @@ namespace hpp
 	void
 	findSpecialJoints ();
 
+	/// \brief Set special joints in robot.
+	void
+	setSpecialJoints ();
+
 	/// \brief Parse URDF model and get joints.
 	///
 	/// Each joint in the URDF model is used to build the
