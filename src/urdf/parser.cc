@@ -17,9 +17,9 @@
 // <http://www.gnu.org/licenses/>.
 
 /**
- * \file src/parser.cc
+ * \file src/urdf/parser.cc
  *
- * \brief Implementation of Parser.
+ * \brief Implementation of URDF Parser for hpp-model.
  */
 
 #include <boost/filesystem/fstream.hpp>
