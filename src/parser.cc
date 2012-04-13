@@ -42,6 +42,8 @@
 #include <hpp/model/rotation-joint.hh>
 #include <hpp/model/translation-joint.hh>
 
+#include <hpp/geometry/component/capsule.hh>
+
 #include "hpp/model/urdf/parser.hh"
 #include "hpp/model/urdf/polyhedron-loader.hh"
 
@@ -584,14 +586,53 @@ namespace hpp
 	    // Create Kite box component.
 	    CkppKCDBoxShPtr box
 	      = CkppKCDBox::create (link->name, x, y, z);
+	    box->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link);
+	    CkitMat4 position = computeBodyAbsolutePosition (link,
+							     visual->origin);
 
 	    // Add solid component and activate distance computation.
 	    body->addInnerObject (CkppSolidComponentRef::create (box),
 	    			  position,
 	    			  true);
+	  }
+
+	// Handle the case where visual geometry is a mesh and
+	// collision geometry is a cylinder. In this case the
+	// collision geometry KiteLab is considered to be a capsule.
+	if (visual->geometry->type == ::urdf::Geometry::MESH
+	    && collision->geometry->type == ::urdf::Geometry::CYLINDER)
+	  {
+	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
+	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
+	    boost::shared_ptr< ::urdf::Cylinder> collisionGeometry
+	      = dynamic_pointer_cast< ::urdf::Cylinder> (collision->geometry);
+
+	    double length = collisionGeometry->length;
+	    double radius = collisionGeometry->radius;
+
+	    // Create capsule component.
+	    using namespace hpp::geometry::component;
+	    CapsuleShPtr capsule
+	      = Capsule::create (link->name, length, radius);
+	    capsule->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+
+	    // Compute body position in world frame.
+	    CkitMat4 position = computeBodyAbsolutePosition (link,
+							     collision->origin);
+
+	    // Apply additional transformation as capsules
+	    // are oriented along the x axis, while cylinders in urdf
+	    // are oriented along the z axis.
+	    CkitMat4 zTox;
+	    zTox.rotateY (M_PI / 2);
+	    position = position * zTox;
+
+	    // Add solid component and activate distance computation.
+	    body->addInnerObject (CkppSolidComponentRef::create (capsule),
+				  position,
+				  true);
 	  }
       }
 
