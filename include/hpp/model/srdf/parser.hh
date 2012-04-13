@@ -28,6 +28,7 @@
 
 # include <srdf/model.h>
 
+# include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
 namespace hpp
@@ -42,12 +43,28 @@ namespace hpp
       class Parser
       {
       public:
+	typedef std::pair<std::string, std::string> CollisionPairType;
+	typedef std::vector<CollisionPairType> CollisionPairsType;
+
+	typedef std::vector<CkwsJointShPtr> JointPtrsType;
+	typedef std::vector<CkcdObjectShPtr> ObjectPtrsType;
+
+	typedef hpp::model::Body BodyType;
+	typedef hpp::model::BodyShPtr BodyPtrType;
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
 
 	/// \brief Default constructor.
 	explicit Parser ();
 	/// \brief Destructor.
 	virtual ~Parser ();
+
+	/// Display in output stream list of disabled collision pairs.
+	void
+	displayDisabledCollisionPairs (std::ostream& os);
+
+	/// Display in output stream list of added collision pairs.
+	void
+	displayAddedCollisionPairs (std::ostream& os);
 
 	/// \brief Parse an URDF file and add semantic information to
 	/// humanoid robot.
@@ -83,10 +100,25 @@ namespace hpp
 		     RobotPtrType& robot);
 
       protected:
+	/// \brief Add collision pairs to robot.
+	void
+	addCollisionPairs ();
+
+	/// \brief Check if given body pair is disabled.
+	bool
+	isCollisionPairDisabled (const std::string& bodyName_1,
+				 const std::string& bodyName_2);
+
+	/// \brief Check if given body pair has been already been
+	/// added.
+	bool
+	isCollisionPairAdded (const std::string& bodyName_1,
+			      const std::string& bodyName_2);
 
       private:
 	::srdf::Model model_;
 	RobotPtrType robot_;
+	CollisionPairsType colPairs_;
 
       }; // class Parser
 

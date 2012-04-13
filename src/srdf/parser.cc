@@ -40,11 +40,128 @@ namespace hpp
     {
       Parser::Parser ()
 	: model_ (),
-	  robot_ ()
+	  robot_ (),
+	  colPairs_ ()
       {}
 
       Parser::~Parser ()
       {}
+
+      void
+      Parser::displayDisabledCollisionPairs (std::ostream& os)
+      {
+	CollisionPairsType disabledColPairs
+	  = model_.getDisabledCollisions ();
+
+	os << "Disabled collision pairs list size: "
+	   << disabledColPairs.size () << std::endl;
+
+	BOOST_FOREACH (CollisionPairType colPair, disabledColPairs)
+	  {
+	    os << colPair.first << " " << colPair.second << std::endl;
+	  }
+      }
+
+      void
+      Parser::displayAddedCollisionPairs (std::ostream& os)
+      {
+	os << "Added collision pairs list size: "
+	   << colPairs_.size () << std::endl;
+
+	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
+	  {
+	    os << colPair.first << " " << colPair.second << std::endl;
+	  }
+      }
+
+      void
+      Parser::addCollisionPairs ()
+      {
+	// Retrieve joints.
+	JointPtrsType joints;
+	robot_->getJointVector (joints);
+
+	// Cycle through joints to add collision pairs.
+	BOOST_FOREACH (CkwsJointShPtr joint_i, joints)
+	  {
+	    BodyPtrType body_i;
+	    body_i = KIT_DYNAMIC_PTR_CAST (BodyType,
+					   joint_i->attachedBody ());
+	    if (!body_i)
+	      continue;
+	    std::string bodyName_i = body_i->name ();
+
+	    BOOST_FOREACH (CkwsJointShPtr joint_j, joints)
+	      {
+		BodyPtrType body_j;
+		body_j = KIT_DYNAMIC_PTR_CAST (BodyType,
+					       joint_j->attachedBody ());
+		if (!body_j)
+		  continue;
+		std::string bodyName_j = body_j->name ();
+
+		// Add collision pair after checking it is not
+		// disabled, and that it has not been already added.
+		if (bodyName_i != bodyName_j
+		    && !isCollisionPairDisabled (bodyName_i, bodyName_j)
+		    && !isCollisionPairAdded (bodyName_i, bodyName_j))
+		  {
+		    // Add collision pairs only for bodies that have
+		    // geometric objects attached to them.
+		    ObjectPtrsType objects_i = body_i->innerObjects ();
+		    ObjectPtrsType objects_j = body_j->innerObjects ();
+		    if (objects_i.size () > 1 && objects_j.size () > 1)
+		      {
+			BOOST_FOREACH (CkcdObjectShPtr object, objects_j)
+			  body_i->addOuterObject (object);
+
+			colPairs_.push_back
+			  (CollisionPairType (bodyName_i, bodyName_j));
+		      }
+		  }
+	      }
+	  }
+      }
+
+      bool
+      Parser::isCollisionPairDisabled (const std::string& bodyName_1,
+				       const std::string& bodyName_2)
+      {
+	// Retrieve collision pairs that will NOT be taken into account.
+	CollisionPairsType disabledColPairs
+	  = model_.getDisabledCollisions ();
+
+	// Cycle through disabled collision pairs.
+	BOOST_FOREACH (CollisionPairType disabledColPair, disabledColPairs)
+	  {
+	    std::string disabled1 = disabledColPair.first;
+	    std::string disabled2 = disabledColPair.second;
+
+	    if ((bodyName_1 == disabled1 && bodyName_2 == disabled2)
+		|| (bodyName_1 == disabled2 && bodyName_2 == disabled1))
+		return true;
+	  }
+
+	return false;
+      }
+
+      bool
+      Parser::isCollisionPairAdded (const std::string& bodyName_1,
+				    const std::string& bodyName_2)
+      {
+	// Cycle through added collision pairs.
+	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
+	  {
+	    std::string added1 = colPair.first;
+	    std::string added2 = colPair.second;
+
+	    if ((bodyName_1 == added1 && bodyName_2 == added2)
+		|| (bodyName_1 == added2 && bodyName_2 == added1))
+		return true;
+	  }
+
+	return false;
+      }
 
       void
       Parser::parse (const std::string& robotResourceName,
@@ -66,7 +183,7 @@ namespace hpp
 	semanticDescription.resize(semanticResource.size);
 	for (unsigned i = 0; i < semanticResource.size; ++i)
 	  semanticDescription[i] = semanticResource.data.get()[i];
-	
+
 	parseStream (robotDescription, semanticDescription, robot);
       }
 
@@ -79,6 +196,7 @@ namespace hpp
 	// multiple robots using the same object.
 	model_.clear ();
 	robot_ = robot;
+	colPairs_.clear ();
 
 	// Parse urdf model.
 	::urdf::Model urdfModel;
@@ -90,6 +208,9 @@ namespace hpp
 	if (!model_.initString (urdfModel, semanticDescription))
 	  throw std::runtime_error ("failed to open SRDF file."
 				    " Is the filename location correct?");
+
+	// Add collision pairs.
+	addCollisionPairs ();
       }
 
     } // end of namespace urdf.
