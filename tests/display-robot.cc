@@ -22,8 +22,10 @@
 #include <boost/test/output_test_stream.hpp>
 
 #include <KineoModel/kppLicense.h>
+#include <KineoModel/kppJointComponent.h>
 
 #include "hpp/model/urdf/parser.hh"
+#include "hpp/model/srdf/parser.hh"
 
 using boost::test_tools::output_test_stream;
 
@@ -36,7 +38,9 @@ BOOST_AUTO_TEST_CASE (display_robot)
       return;
     }
   
-  hpp::model::urdf::Parser parser; 
+  using namespace hpp::model::urdf;
+  hpp::model::urdf::Parser urdfParser; 
+  hpp::model::srdf::Parser srdfParser; 
   hpp::model::HumanoidRobotShPtr humanoidRobot;
 
   // if (argc < 2)
@@ -63,7 +67,31 @@ BOOST_AUTO_TEST_CASE (display_robot)
   // 					  "base_footprint_joint");
   //   }
   // else
-  humanoidRobot = parser.parse ("package://hrp2_14_description/urdf/hrp2.urdf", "base_footprint_joint");
+  humanoidRobot = urdfParser.parse ("package://hrp2_14_description/urdf/hrp2-capsule.urdf", "base_footprint_joint");
+
+  srdfParser.parse ("package://hrp2_14_description/urdf/hrp2-capsule.urdf",
+		    "package://hrp2_14_description/srdf/hrp2.srdf",
+		    humanoidRobot);
 
   BOOST_CHECK_EQUAL (!!humanoidRobot, 1);
+
+  for (unsigned i = 0; i < humanoidRobot->countJointComponents (); ++i)
+    {
+      CkwsJointShPtr joint = humanoidRobot->jointComponent (i)->kwsJoint ();
+      CkwsBodyShPtr body = joint->attachedBody ();
+
+      if (body)
+	{
+	  Parser::BodyPtrType hppBody
+	    = KIT_DYNAMIC_PTR_CAST (hpp::model::Body, body);
+	  if (!hppBody)
+	    std::cerr << "Null pointer to body." << std::endl;
+
+	  std::cout << hppBody->nbDistPairs () << std::endl;
+	}
+    }
+
+  // parser.displayActuatedJoints (std::cout);
+  // parser.displayEndEffectors (std::cout);
+  // std::cout << *humanoidRobot << std::endl;
 }
