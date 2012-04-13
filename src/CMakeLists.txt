@@ -21,8 +21,8 @@ SET(LIBRARY_NAME ${PROJECT_NAME})
 
 ADD_LIBRARY(${LIBRARY_NAME}
   SHARED
-  parser.cc
-  polyhedron-loader.cc
+  urdf/parser.cc
+  urdf/polyhedron-loader.cc
   )
 
 SET_TARGET_PROPERTIES(${LIBRARY_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
