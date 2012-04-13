@@ -550,6 +550,7 @@ namespace hpp
 	    CkppKCDCylinderShPtr cylinder
 	      = CkppKCDCylinder::create (link->name, radius, radius, length,
 					 32, true, true);
+	    cylinder->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
