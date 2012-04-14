@@ -57,10 +57,21 @@ ADD_ROSPACK_DEPENDENCY("urdf_parser")
 ADD_ROSPACK_DEPENDENCY("srdf")
 
 # Set header files.
-SET(${PROJECT_NAME}_HEADERS
+SET(${PROJECT_NAME}_URDF_HEADERS
   include/hpp/model/urdf/parser.hh
   include/hpp/model/urdf/polyhedron-loader.hh
+  )
+
+SET(${PROJECT_NAME}_SRDF_HEADERS
   include/hpp/model/srdf/parser.hh
+  )
+
+INSTALL(FILES ${${PROJECT_NAME}_URDF_HEADERS}
+  DESTINATION include/hpp/model/urdf
+  )
+
+INSTALL(FILES ${${PROJECT_NAME}_SRDF_HEADERS}
+  DESTINATION include/hpp/model/srdf
   )
 
 PKG_CONFIG_APPEND_LIBS(${PROJECT_NAME})
