@@ -55,7 +55,7 @@ namespace hpp
 	typedef CjrlFoot* FootPtrType;
 
 	/// \brief Map of abstract robot dynamics compatible joints.
-	typedef std::map<const std::string, JointPtrType> MapHppJoint;
+	typedef std::map<const std::string, JointPtrType> MapHppJointType;
 	/// \brief Map of URDF joints.
 	typedef std::map<std::string, UrdfJointPtrType> MapJointType;
 
@@ -151,8 +151,8 @@ namespace hpp
 
 	/// \brief Compute hands information.
 	void
-	computeHandsInformation (MapHppJoint::const_iterator& hand,
-				 MapHppJoint::const_iterator& wrist,
+	computeHandsInformation (MapHppJointType::const_iterator& hand,
+				 MapHppJointType::const_iterator& wrist,
 				 vector3d& center,
 				 vector3d& thumbAxis,
 				 vector3d& foreFingerAxis,
@@ -204,8 +204,8 @@ namespace hpp
 	/// \brief Compute ankle position in foot frame.
 	vector3d
 	computeAnklePositionInLocalFrame
-	(MapHppJoint::const_iterator& foot,
-	 MapHppJoint::const_iterator& ankle) const;
+	(MapHppJointType::const_iterator& foot,
+	 MapHppJointType::const_iterator& ankle) const;
 
 	/// \brief Convert URDF pose to CkitMat4 transformation.
 	CkitMat4
@@ -220,7 +220,7 @@ namespace hpp
 	::urdf::Model model_;
 	RobotPtrType robot_;
 	JointPtrType rootJoint_;
-	MapHppJoint jointsMap_;
+	MapHppJointType jointsMap_;
 	dynamicsJRLJapan::ObjectFactory factory_;
 
 	/// \brief Special joints names.

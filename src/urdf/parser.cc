@@ -328,7 +328,7 @@ namespace hpp
 		|| it->second->type == ::urdf::Joint::FLOATING
 		|| it->second->type == ::urdf::Joint::FIXED)
 	      continue;
-	    MapHppJoint::const_iterator child = jointsMap_.find (it->first);
+	    MapHppJointType::const_iterator child = jointsMap_.find (it->first);
 	    if (child == jointsMap_.end () || !child->second)
 	      throw std::runtime_error ("failed to compute actuated joints");
 
@@ -348,7 +348,7 @@ namespace hpp
 	BOOST_FOREACH (const std::string& childName,
 		       getChildrenJoint (rootJoint->kppJoint ()->name ()))
 	  {
-	    MapHppJoint::const_iterator child = jointsMap_.find (childName);
+	    MapHppJointType::const_iterator child = jointsMap_.find (childName);
 	    if (child == jointsMap_.end () && !!child->second)
 	      throw std::runtime_error ("failed to connect joints");
 	    rootJoint->addChildJoint (child->second);
@@ -359,7 +359,7 @@ namespace hpp
       void
       Parser::addBodiesToJoints ()
       {
-        for(MapHppJoint::const_iterator it = jointsMap_.begin();
+        for(MapHppJointType::const_iterator it = jointsMap_.begin();
 	    it != jointsMap_.end(); ++it)
 	  {
 	    // Retrieve associated URDF joint.
@@ -672,8 +672,8 @@ namespace hpp
 
       void
       Parser::computeHandsInformation
-      (MapHppJoint::const_iterator& hand,
-       MapHppJoint::const_iterator& wrist,
+      (MapHppJointType::const_iterator& hand,
+       MapHppJointType::const_iterator& wrist,
        vector3d& center,
        vector3d& thumbAxis,
        vector3d& foreFingerAxis,
@@ -702,22 +702,22 @@ namespace hpp
       void
       Parser::fillHandsAndFeet ()
       {
-	MapHppJoint::const_iterator leftHand =
+	MapHppJointType::const_iterator leftHand =
 	  jointsMap_.find (leftHandJointName_);
-	MapHppJoint::const_iterator rightHand =
+	MapHppJointType::const_iterator rightHand =
 	  jointsMap_.find (rightHandJointName_);
-	MapHppJoint::const_iterator leftWrist =
+	MapHppJointType::const_iterator leftWrist =
 	  jointsMap_.find (leftWristJointName_);
-	MapHppJoint::const_iterator rightWrist =
+	MapHppJointType::const_iterator rightWrist =
 	  jointsMap_.find (rightWristJointName_);
 
-	MapHppJoint::const_iterator leftFoot =
+	MapHppJointType::const_iterator leftFoot =
 	  jointsMap_.find (leftFootJointName_);
-	MapHppJoint::const_iterator rightFoot =
+	MapHppJointType::const_iterator rightFoot =
 	  jointsMap_.find (rightFootJointName_);
-	MapHppJoint::const_iterator leftAnkle =
+	MapHppJointType::const_iterator leftAnkle =
 	  jointsMap_.find (leftAnkleJointName_);
-	MapHppJoint::const_iterator rightAnkle =
+	MapHppJointType::const_iterator rightAnkle =
 	  jointsMap_.find (rightAnkleJointName_);
 
 	if (leftHand != jointsMap_.end () && leftWrist != jointsMap_.end ())
@@ -938,7 +938,7 @@ namespace hpp
       Parser::JointPtrType
       Parser::findJoint (const std::string& jointName)
       {
-	Parser::MapHppJoint::const_iterator it = jointsMap_.find (jointName);
+	Parser::MapHppJointType::const_iterator it = jointsMap_.find (jointName);
 	if (it == jointsMap_.end ())
 	  {
 	    Parser::JointPtrType ptr;
@@ -976,8 +976,8 @@ namespace hpp
 
       vector3d
       Parser::computeAnklePositionInLocalFrame
-      (MapHppJoint::const_iterator& foot,
-       MapHppJoint::const_iterator& ankle) const
+      (MapHppJointType::const_iterator& foot,
+       MapHppJointType::const_iterator& ankle) const
       {
 	matrix4d world_M_foot =
 	  foot->second->jrlJoint ()->initialPosition ();
@@ -1087,7 +1087,8 @@ namespace hpp
 	  {
 	    if (!joint)
 	      throw std::runtime_error ("null shared pointer in URDF model");
-	    MapHppJoint::const_iterator child = jointsMap_.find (joint->name);
+	    MapHppJointType::const_iterator child
+	      = jointsMap_.find (joint->name);
 	    if (child == jointsMap_.end () || !child->second)
 	      throw std::runtime_error ("missing node in kinematics tree");
 	    rootJoint_->addChildJoint (child->second);
