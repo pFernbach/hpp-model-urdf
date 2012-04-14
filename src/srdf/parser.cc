@@ -39,7 +39,8 @@ namespace hpp
     namespace srdf
     {
       Parser::Parser ()
-	: model_ (),
+	: urdfModel_ (),
+	  srdfModel_ (),
 	  robot_ (),
 	  colPairs_ ()
       {}
@@ -51,7 +52,7 @@ namespace hpp
       Parser::displayDisabledCollisionPairs (std::ostream& os)
       {
 	CollisionPairsType disabledColPairs
-	  = model_.getDisabledCollisions ();
+	  = srdfModel_.getDisabledCollisions ();
 
 	os << "Disabled collision pairs list size: "
 	   << disabledColPairs.size () << std::endl;
@@ -129,7 +130,7 @@ namespace hpp
       {
 	// Retrieve collision pairs that will NOT be taken into account.
 	CollisionPairsType disabledColPairs
-	  = model_.getDisabledCollisions ();
+	  = srdfModel_.getDisabledCollisions ();
 
 	// Cycle through disabled collision pairs.
 	BOOST_FOREACH (CollisionPairType disabledColPair, disabledColPairs)
@@ -194,18 +195,18 @@ namespace hpp
       {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
-	model_.clear ();
+	urdfModel_.clear ();
+	srdfModel_.clear ();
 	robot_ = robot;
 	colPairs_.clear ();
 
 	// Parse urdf model.
-	::urdf::Model urdfModel;
-	if (!urdfModel.initString (robotDescription))
+	if (!urdfModel_.initString (robotDescription))
 	  throw std::runtime_error ("failed to open URDF file."
 				    " Is the filename location correct?");
 
 	// Parse srdf model.
-	if (!model_.initString (urdfModel, semanticDescription))
+	if (!srdfModel_.initString (urdfModel_, semanticDescription))
 	  throw std::runtime_error ("failed to open SRDF file."
 				    " Is the filename location correct?");
 

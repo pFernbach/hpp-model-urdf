@@ -116,7 +116,8 @@ namespace hpp
 			      const std::string& bodyName_2);
 
       private:
-	::srdf::Model model_;
+	::urdf::Model urdfModel_;
+	::srdf::Model srdfModel_;
 	RobotPtrType robot_;
 	CollisionPairsType colPairs_;
 
