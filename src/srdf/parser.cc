@@ -164,6 +164,67 @@ namespace hpp
 	return false;
       }
 
+      Parser::HppConfigurationType
+      Parser::getHppReferenceConfig (const std::string& groupName,
+				     const std::string& stateName)
+      {
+	// Retrieve joint name to dof map.
+	ConfigurationType jointToDof
+	  = getReferenceConfig (groupName, stateName);
+
+	// Retrieve robot joint vector.
+	std::vector <CkppJointComponentShPtr> joints;
+	robot_->getJointComponentVector (joints);
+
+	// Cycle through joint vector and add corresponding dof
+	// values to configuration vector.
+	HppConfigurationType hppConfig (robot_->numberDof ());
+	unsigned i = 0;
+	BOOST_FOREACH (CkppJointComponentShPtr joint, joints)
+	  {
+	    ConfigurationType::iterator it = jointToDof.find (joint->name ());
+	    
+	    if (it != jointToDof.end ())
+	      {
+	    	std::vector<double> dofs = it->second;
+
+	    	BOOST_FOREACH (double dof, dofs)
+	    	  {
+	    	    hppConfig[i] = dof;
+	    	    ++i;
+	    	  }
+	      }
+	  }
+
+	// Check that the configuration has been correctly filled.
+	std::cout << i << std::endl;
+	if (i != robot_->numberDof ())
+	  throw std::runtime_error
+	    ("Incorrect number of dofs in configuration.");
+	else
+	  return hppConfig;
+      }
+
+      Parser::ConfigurationType
+      Parser::getReferenceConfig (const std::string& groupName,
+				  const std::string& stateName)
+      {
+	SRDFGroupStatesType groupStates = srdfModel_.getGroupStates ();
+
+	// Find group state by name.
+	BOOST_FOREACH (SRDFGroupStateType groupState, groupStates)
+	  {
+	    if (groupState.group_ == groupName
+		&& groupState.name_ == stateName)
+	      {
+		return groupState.joint_values_;
+	      }
+	  }
+
+	// Throw error if reference configuration is not found.
+	throw std::runtime_error ("Reference configuration not found.");
+      }
+
       void
       Parser::parse (const std::string& robotResourceName,
 		     const std::string& semanticResourceName,
@@ -214,6 +275,6 @@ namespace hpp
 	addCollisionPairs ();
       }
 
-    } // end of namespace urdf.
+    } // end of namespace srdf.
   } // end of namespace model.
 } // end of namespace  hpp.

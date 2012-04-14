@@ -28,6 +28,8 @@
 
 # include <srdf/model.h>
 
+# include <KineoModel/kppJointComponent.h>
+
 # include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
@@ -45,10 +47,15 @@ namespace hpp
       public:
 	typedef std::pair<std::string, std::string> CollisionPairType;
 	typedef std::vector<CollisionPairType> CollisionPairsType;
+	typedef std::map<std::string, std::vector<double> > ConfigurationType;
+
+	typedef ::srdf::Model::GroupState SRDFGroupStateType;
+	typedef std::vector<SRDFGroupStateType> SRDFGroupStatesType;
 
 	typedef std::vector<CkwsJointShPtr> JointPtrsType;
 	typedef std::vector<CkcdObjectShPtr> ObjectPtrsType;
 
+	typedef vectorN HppConfigurationType;
 	typedef hpp::model::Body BodyType;
 	typedef hpp::model::BodyShPtr BodyPtrType;
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
@@ -65,6 +72,31 @@ namespace hpp
 	/// Display in output stream list of added collision pairs.
 	void
 	displayAddedCollisionPairs (std::ostream& os);
+
+	/// Get reference configuration by name.
+	///
+	/// The returned configuration is a vector containing all the
+	/// dof values. One should make no assumption about the dof
+	/// order in the vector.
+	///
+	/// The only guarantee is that the configuration of the robot
+	/// will be correctly set if the returned configuration vector
+	/// is given as argument to
+	/// hpp::model::Device::hppSetCurrentConfig ().
+	HppConfigurationType
+	getHppReferenceConfig (const std::string& groupName,
+			       const std::string& stateName);
+
+	/// Get reference configuration from SRDF by name.
+	///
+	/// The returned configuration maps each joint name to a joint
+	/// vector. A joint vector contains the joint dof values.
+	///
+	/// \param groupName name of joints group
+	/// \param stateName name of state in group to retrieve
+	ConfigurationType
+	getReferenceConfig (const std::string& groupName,
+			    const std::string& stateName);
 
 	/// \brief Parse an URDF file and add semantic information to
 	/// humanoid robot.
