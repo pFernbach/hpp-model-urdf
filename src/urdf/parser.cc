@@ -203,7 +203,7 @@ namespace hpp
       void
       Parser::findSpecialJoints ()
       {
-	findSpecialJoint ("BODY", waistJointName_);
+	waistJointName_ = "base_joint";
 	findSpecialJoint ("torso", chestJointName_);
 	findSpecialJoint ("l_wrist", leftWristJointName_);
 	findSpecialJoint ("r_wrist", rightWristJointName_);
@@ -364,11 +364,15 @@ namespace hpp
 	  {
 	    // Retrieve associated URDF joint.
 	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
-	    if (!joint)
+	    if (!joint && it->first != "base_joint")
 	      continue;
 
 	    // Retrieve joint name.
-	    std::string childLinkName = joint->child_link_name;
+	    std::string childLinkName;
+	    if (it->first == "base_joint")
+	      childLinkName = "base_link";
+	    else
+	      childLinkName = joint->child_link_name;
 
 	    // Get child link.
 	    UrdfLinkConstPtrType link = model_.getLink (childLinkName);
@@ -405,9 +409,12 @@ namespace hpp
 
 		// Use joint normalization to properly reorient
 		// inertial frames.
-		if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
-		    || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
-		    || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
+		if (it->first == "base_joint")
+		  {}
+		else
+		  if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+		      || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+		      || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
 		  {
 		    CkitMat4 normalizedJointTransform
 		      = normalizeFrameOrientation (link->parent_joint);
@@ -467,13 +474,19 @@ namespace hpp
       (const Parser::UrdfLinkConstPtrType& link, const ::urdf::Pose& pose)
       {
 	CkitMat4 linkPositionInParentJoint = poseToMatrix (pose);
-	CkitMat4 parentJointInWorld
-	  = findJoint (link->parent_joint->name)->kppJoint ()
-	  ->kwsJoint ()->currentPosition ();
+
+	CkitMat4 parentJointInWorld;
+	if (link->name == "base_link")
+	  parentJointInWorld = findJoint ("base_joint")->kppJoint ()
+	    ->kwsJoint ()->currentPosition ();
+	else
+	  parentJointInWorld = findJoint (link->parent_joint->name)->kppJoint ()
+	    ->kwsJoint ()->currentPosition ();
 
 	// Denormalize orientation if this is an actuated joint.
-	UrdfJointConstPtrType joint
-	  = model_.getJoint (link->parent_joint->name);
+	if (link->name == "base_link")
+	  {}
+	else
 	if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
 	    || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
 	    || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
@@ -807,7 +820,7 @@ namespace hpp
 	boost::shared_ptr<const ::urdf::Joint> joint =
 	  model_.getJoint (jointName);
 
-	if (!joint)
+	if (!joint && jointName != "base_joint")
 	  {
 	    boost::format fmt
 	      ("failed to retrieve children joints of joint %s");
@@ -815,8 +828,11 @@ namespace hpp
 	    throw std::runtime_error (fmt.str ());
 	  }
 
-	boost::shared_ptr<const ::urdf::Link> childLink =
-	  model_.getLink (joint->child_link_name);
+	boost::shared_ptr<const ::urdf::Link> childLink;
+	if (jointName == "base_joint")
+	  childLink = model_.getLink ("base_link");
+	else
+	  childLink = model_.getLink (joint->child_link_name);
 
 	if (!childLink)
 	  throw std::runtime_error ("failed to retrieve children link");
@@ -1083,17 +1099,7 @@ namespace hpp
 	  throw std::runtime_error ("URDF model is missing a root link");
 
 	typedef boost::shared_ptr<const ::urdf::Joint> JointPtr_t;
-	BOOST_FOREACH (const JointPtr_t& joint, rootLink->child_joints)
-	  {
-	    if (!joint)
-	      throw std::runtime_error ("null shared pointer in URDF model");
-	    MapHppJointType::const_iterator child
-	      = jointsMap_.find (joint->name);
-	    if (child == jointsMap_.end () || !child->second)
-	      throw std::runtime_error ("missing node in kinematics tree");
-	    rootJoint_->addChildJoint (child->second);
-	    connectJoints (child->second);
-	  }
+	connectJoints (rootJoint_);
 
 	// Look for special joints and attach them to the model.
 	setSpecialJoints ();
