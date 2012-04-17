@@ -251,13 +251,13 @@ namespace hpp
       }
 
       void
-      Parser::parseJoints (const std::string rootJointName)
+      Parser::parseJoints ()
       {
 	// Create free floating joint.
 	// FIXME: position set to identity for now.
 	CkitMat4 position;
 	position.identity ();
-	rootJoint_ = createFreeflyerJoint (rootJointName, position);
+	rootJoint_ = createFreeflyerJoint ("base_joint", position);
 	if (!rootJoint_)
 	  throw std::runtime_error
 	    ("failed to create root joint (free flyer)");
@@ -1047,8 +1047,7 @@ namespace hpp
       }
 
       Parser::RobotPtrType
-      Parser::parse (const std::string& filename,
-		     const std::string& rootJointName)
+      Parser::parse (const std::string& filename)
       {
 	resource_retriever::Retriever resourceRetriever;
 
@@ -1059,12 +1058,11 @@ namespace hpp
 	unsigned i = 0;
 	for (; i < resource.size; ++i)
 	  robotDescription[i] = resource.data.get()[i];
-	return parseStream (robotDescription, rootJointName);
+	return parseStream (robotDescription);
       }
 
       Parser::RobotPtrType
-      Parser::parseStream (const std::string& robotDescription,
-			   const std::string& rootJointName)
+      Parser::parseStream (const std::string& robotDescription)
       {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
@@ -1082,7 +1080,7 @@ namespace hpp
 	findSpecialJoints ();
 
 	// Look for joints in the URDF model tree.
-	parseJoints (rootJointName);
+	parseJoints ();
 	if (!rootJoint_)
 	  throw std::runtime_error ("failed to parse actuated joints");
 

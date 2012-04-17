@@ -82,14 +82,12 @@ namespace hpp
 	/// \param resourceName resource name using the
 	/// resource_retriever format.
 	RobotPtrType
-	parse (const std::string& resourceName,
-	       const std::string& rootJointName);
+	parse (const std::string& resourceName);
 
 	/// \brief Parse an URDF sent as a stream and return a
 	/// humanoid robot.
 	RobotPtrType
-	parseStream (const std::string& robotDescription,
-		     const std::string& rootJointName);
+	parseStream (const std::string& robotDescription);
 
       protected:
 	/// \brief Retrieve joint name attached to a particular link.
@@ -115,7 +113,7 @@ namespace hpp
 	/// Each joint in the URDF model is used to build the
 	/// corresponding hpp::model::JointShPtr object.
 	void
-	parseJoints (const std::string rootJointName);
+	parseJoints ();
 
 	/// \brief Get actuated joints.
 	std::vector<CjrlJoint*>
