@@ -73,6 +73,17 @@ namespace hpp
 	void
 	displayAddedCollisionPairs (std::ostream& os);
 
+	/// Compute full configuration of the robot.
+	///
+	/// This method takes as argument a configuration containing
+	/// reference dof values for the actuated joints, places the
+	/// robot on the floor at a given height, and computes the
+	/// free-flyer joint dof values.
+	void
+	computeFullConfiguration (HppConfigurationType& configuration,
+				  const bool isRightFootSupporting = true,
+				  const double& floorHeight = 0.);
+
 	/// Get reference configuration by name.
 	///
 	/// The returned configuration is a vector containing all the

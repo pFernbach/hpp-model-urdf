@@ -164,6 +164,58 @@ namespace hpp
 	return false;
       }
 
+      void
+      Parser::computeFullConfiguration (HppConfigurationType& configuration,
+					const bool isRightFootSupporting,
+					const double& floorHeight)
+      {
+	// Set current robot configuration.
+	robot_->hppSetCurrentConfig (configuration);
+
+	CjrlJoint* waist = robot_->waist ();
+	CjrlJoint* ankle = isRightFootSupporting ?
+	  robot_->rightAnkle() : robot_->leftAnkle();
+	CjrlFoot* sole = isRightFootSupporting ?
+	  robot_->rightFoot () : robot_->leftFoot ();
+
+	if (!waist)
+	  throw std::runtime_error ("No pointer to waist.");
+	if (!ankle)
+	  throw std::runtime_error ("No pointer to suppporting ankle.");
+	if (!sole)
+	  throw std::runtime_error ("No pointer to suppporting sole.");
+
+	// Compute waist transformation in floor given an absolute
+	// (right) foot transformation.
+	matrix4d waistTInWorld = waist->currentTransformation ();
+	matrix4d ankleTInWorld = ankle->currentTransformation ();
+	vector3d anklePInSole;
+	sole->getAnklePositionInLocalFrame (anklePInSole);
+	matrix4d ankleTInFloor;
+	ankleTInFloor(0,0) = 1;
+	ankleTInFloor(1,1) = 1;
+	ankleTInFloor(2,2) = 1;
+	ankleTInFloor(3,3) = 1;
+	ankleTInFloor(0,3) = anklePInSole[0];
+	ankleTInFloor(1,3) = anklePInSole[1];
+	ankleTInFloor(2,3) = anklePInSole[2] + floorHeight;
+
+	matrix4d worldTInAnkle;
+	MAL_S4x4_INVERSE (ankleTInWorld, worldTInAnkle, double);
+	matrix4d waistTInAnkle;
+	MAL_S4x4_C_eq_A_by_B (waistTInAnkle, worldTInAnkle, waistTInWorld);
+	matrix4d waistTInFloor;
+	MAL_S4x4_C_eq_A_by_B (waistTInFloor, ankleTInFloor, waistTInAnkle);
+
+	// Fill free-flyer dof values in configuration vector.
+	configuration[0] = waistTInFloor(0,3);
+	configuration[1] = waistTInFloor(1,3);
+	configuration[2] = waistTInFloor(2,3);
+	configuration[3] = atan2 (waistTInFloor(1,2), waistTInFloor(2,2));
+	configuration[4] = - asin (waistTInFloor(0,2));
+	configuration[5] = atan2 (waistTInFloor(0,1), waistTInFloor(0,0));
+      }
+
       Parser::HppConfigurationType
       Parser::getHppReferenceConfig (const std::string& groupName,
 				     const std::string& stateName)
@@ -176,14 +228,17 @@ namespace hpp
 	std::vector <CkppJointComponentShPtr> joints;
 	robot_->getJointComponentVector (joints);
 
+	// Reserve first 6 dofs for free-floating. Their value will be
+	// set later.
+	HppConfigurationType hppConfig (robot_->numberDof ());
+	unsigned i = 6;
+
 	// Cycle through joint vector and add corresponding dof
 	// values to configuration vector.
-	HppConfigurationType hppConfig (robot_->numberDof ());
-	unsigned i = 0;
 	BOOST_FOREACH (CkppJointComponentShPtr joint, joints)
 	  {
 	    ConfigurationType::iterator it = jointToDof.find (joint->name ());
-	    
+
 	    if (it != jointToDof.end ())
 	      {
 	    	std::vector<double> dofs = it->second;
@@ -195,6 +250,12 @@ namespace hpp
 	    	  }
 	      }
 	  }
+
+	// Use the actuated joints dof values to compute the
+	// free-flyer joint dof values.
+	// We make for now the strong assumption that the floor is
+	// flat and at a null height.
+	computeFullConfiguration (hppConfig, true, 0.);
 
 	// Check that the configuration has been correctly filled.
 	if (i != robot_->numberDof ())
