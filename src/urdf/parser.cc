@@ -244,8 +244,8 @@ namespace hpp
 	  std::cout << "WARNING: no right ankle joint found" << std::endl;
 	else
 	  robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
-	if (!findJoint (rightFootJointName_))
-	  std::cout << "WARNING: no right ankle joint found" << std::endl;
+	if (!findJoint (gazeJointName_))
+	  std::cout << "WARNING: no gaze joint found" << std::endl;
 	else
 	  robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
       }
