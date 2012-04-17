@@ -197,7 +197,6 @@ namespace hpp
 	  }
 
 	// Check that the configuration has been correctly filled.
-	std::cout << i << std::endl;
 	if (i != robot_->numberDof ())
 	  throw std::runtime_error
 	    ("Incorrect number of dofs in configuration.");
