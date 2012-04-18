@@ -208,8 +208,8 @@ namespace hpp
 	MAL_S4x4_C_eq_A_by_B (waistTInFloor, ankleTInFloor, waistTInAnkle);
 
 	// Fill free-flyer dof values in configuration vector.
-	configuration[0] = waistTInFloor(0,3);
-	configuration[1] = waistTInFloor(1,3);
+	configuration[0] = 0;
+	configuration[1] = 0;
 	configuration[2] = waistTInFloor(2,3);
 	configuration[3] = atan2 (waistTInFloor(1,2), waistTInFloor(2,2));
 	configuration[4] = - asin (waistTInFloor(0,2));
