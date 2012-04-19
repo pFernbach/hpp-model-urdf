@@ -55,6 +55,7 @@ ADD_ROSPACK_DEPENDENCY("urdf")
 ADD_ROSPACK_DEPENDENCY("urdf_interface")
 ADD_ROSPACK_DEPENDENCY("urdf_parser")
 ADD_ROSPACK_DEPENDENCY("srdf")
+ADD_ROSPACK_DEPENDENCY("rcpdf")
 
 # Set header files.
 SET(${PROJECT_NAME}_URDF_HEADERS
@@ -66,12 +67,20 @@ SET(${PROJECT_NAME}_SRDF_HEADERS
   include/hpp/model/srdf/parser.hh
   )
 
+SET(${PROJECT_NAME}_RCPDF_HEADERS
+  include/hpp/model/rcpdf/parser.hh
+  )
+
 INSTALL(FILES ${${PROJECT_NAME}_URDF_HEADERS}
   DESTINATION include/hpp/model/urdf
   )
 
 INSTALL(FILES ${${PROJECT_NAME}_SRDF_HEADERS}
   DESTINATION include/hpp/model/srdf
+  )
+
+INSTALL(FILES ${${PROJECT_NAME}_RCPDF_HEADERS}
+  DESTINATION include/hpp/model/rcpdf
   )
 
 PKG_CONFIG_APPEND_LIBS(${PROJECT_NAME})
