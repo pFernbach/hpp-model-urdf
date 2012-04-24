@@ -580,7 +580,6 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     visual->origin);
-	    cylinder->setAbsolutePosition (position);
 
 	    // Apply additional transformation as cylinders in Kite
 	    // are oriented along the x axis, while cylinders in urdf
@@ -588,6 +587,7 @@ namespace hpp
 	    CkitMat4 zTox;
 	    zTox.rotateY (M_PI / 2);
 	    position = position * zTox;
+	    cylinder->setAbsolutePosition (position);
 
 	    // Add solid component.
 	    joint->kppJoint ()->addSolidComponentRef
@@ -647,7 +647,6 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     collision->origin);
-	    capsule->setAbsolutePosition (position);
 
 	    // Apply additional transformation as capsules
 	    // are oriented along the x axis, while cylinders in urdf
@@ -655,6 +654,7 @@ namespace hpp
 	    CkitMat4 zTox;
 	    zTox.rotateY (M_PI / 2);
 	    position = position * zTox;
+	    capsule->setAbsolutePosition (position);
 
 	    // Add solid component.
 	    joint->kppJoint ()->addSolidComponentRef
