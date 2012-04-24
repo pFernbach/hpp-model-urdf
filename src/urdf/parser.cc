@@ -32,6 +32,7 @@
 #include <resource_retriever/retriever.h>
 
 #include <KineoModel/kppSMLinearComponent.h>
+#include <KineoModel/kppJointComponent.h>
 #include <KineoModel/kppSolidComponentRef.h>
 #include <KineoKCDModel/kppKCDPolyhedron.h>
 #include <KineoKCDModel/kppKCDCylinder.h>
@@ -459,13 +460,24 @@ namespace hpp
 	    it->second->jrlJoint ()->setLinkedBody (*jrlBody);
 
 	    // Link geometric body to joint.
-	    BodyPtrType body = hpp::model::Body::create (childLinkName);
-	    KIT_DYNAMIC_PTR_CAST(CkwsJoint, it->second)
-	      ->setAttachedBody (body);
+	    // BodyPtrType body = hpp::model::Body::create (childLinkName);
+	    // std::cout << childLinkName << " " << body->innerObjects ().size ()
+	    // 	      << std::endl;
+	    // KIT_DYNAMIC_PTR_CAST(CkwsJoint, it->second)
+	    //   ->setAttachedBody (body);
 
 	    // Create geometric body and fill geometry information.
 	    if (link->visual && link->collision)
-	      addSolidComponentToBody (link, body);
+	      {
+		JointPtrType hppJoint
+		  = KIT_DYNAMIC_PTR_CAST (JointType, it->second);
+		addSolidComponentToJoint (link, hppJoint);
+
+		BodyPtrType body
+		  = KIT_DYNAMIC_PTR_CAST (BodyType,
+					  hppJoint->kppJoint ()->kwsKCDBody ());
+		body->name (childLinkName);
+	      }
 	  }
       }
 
@@ -498,8 +510,8 @@ namespace hpp
       }
 
       void
-      Parser::addSolidComponentToBody (const UrdfLinkConstPtrType& link,
-				       const BodyPtrType& body)
+      Parser::addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
+					const JointPtrType& joint)
       {
 	boost::shared_ptr< ::urdf::Visual> visual =
 	  link->visual;
@@ -538,11 +550,11 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     visual->origin);
+	    polyhedron->setAbsolutePosition (position);
 
-	    // Add solid component and activate distance computation.
-	    body->addInnerObject (CkppSolidComponentRef::create (polyhedron),
-				  position,
-				  true);
+	    // Add solid component.
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (polyhedron));
 	  }
 
 	// Handle the case where visual geometry is a cylinder and
@@ -568,6 +580,7 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     visual->origin);
+	    cylinder->setAbsolutePosition (position);
 
 	    // Apply additional transformation as cylinders in Kite
 	    // are oriented along the x axis, while cylinders in urdf
@@ -576,10 +589,9 @@ namespace hpp
 	    zTox.rotateY (M_PI / 2);
 	    position = position * zTox;
 
-	    // Add solid component and activate distance computation.
-	    body->addInnerObject (CkppSolidComponentRef::create (cylinder),
-	    			  position,
-	    			  true);
+	    // Add solid component.
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (cylinder));
 	  }
 
 	// Handle the case where visual geometry is a box and
@@ -605,11 +617,11 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     visual->origin);
+	    box->setAbsolutePosition (position);
 
-	    // Add solid component and activate distance computation.
-	    body->addInnerObject (CkppSolidComponentRef::create (box),
-	    			  position,
-	    			  true);
+	    // Add solid component.
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (box));
 	  }
 
 	// Handle the case where visual geometry is a mesh and
@@ -635,6 +647,7 @@ namespace hpp
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     collision->origin);
+	    capsule->setAbsolutePosition (position);
 
 	    // Apply additional transformation as capsules
 	    // are oriented along the x axis, while cylinders in urdf
@@ -643,10 +656,9 @@ namespace hpp
 	    zTox.rotateY (M_PI / 2);
 	    position = position * zTox;
 
-	    // Add solid component and activate distance computation.
-	    body->addInnerObject (CkppSolidComponentRef::create (capsule),
-				  position,
-				  true);
+	    // Add solid component.
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (capsule));
 	  }
       }
 

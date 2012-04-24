@@ -49,7 +49,9 @@ namespace hpp
 	typedef boost::shared_ptr<const ::urdf::Joint> UrdfJointConstPtrType;
 
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
+	typedef hpp::model::Joint JointType;
 	typedef hpp::model::JointShPtr JointPtrType;
+	typedef hpp::model::Body BodyType;
 	typedef hpp::model::BodyShPtr BodyPtrType;
 	typedef CjrlHand* HandPtrType;
 	typedef CjrlFoot* FootPtrType;
@@ -140,8 +142,8 @@ namespace hpp
 	/// The visual and collision geometries attached to the link
 	/// are used to create the appropriate Kite solid component.
 	void
-	addSolidComponentToBody (const UrdfLinkConstPtrType& link,
-				 const BodyPtrType& body);
+	addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
+				  const JointPtrType& joint);
 
 	/// \brief Set free-flyer joint bounds for roamdap builders.
 	void

@@ -92,6 +92,11 @@ namespace hpp
 	      continue;
 	    std::string bodyName_i = body_i->name ();
 
+	    // Build distance computation analyses for inner objects.
+	    ObjectPtrsType objects_i = body_i->innerObjects ();
+	    BOOST_FOREACH (CkcdObjectShPtr object_i, objects_i)
+	      body_i->addInnerObject (object_i, true);
+
 	    BOOST_FOREACH (CkwsJointShPtr joint_j, joints)
 	      {
 		BodyPtrType body_j;
@@ -109,16 +114,15 @@ namespace hpp
 		  {
 		    // Add collision pairs only for bodies that have
 		    // geometric objects attached to them.
-		    ObjectPtrsType objects_i = body_i->innerObjects ();
 		    ObjectPtrsType objects_j = body_j->innerObjects ();
-		    if (objects_i.size () > 1 && objects_j.size () > 1)
+		    for (unsigned i = 0; i < objects_j.size (); ++i)
 		      {
-			BOOST_FOREACH (CkcdObjectShPtr object, objects_j)
-			  body_i->addOuterObject (object);
-
-			colPairs_.push_back
-			  (CollisionPairType (bodyName_i, bodyName_j));
+			CkcdObjectShPtr object = objects_j[i];
+			body_i->addOuterObject (object, true);
 		      }
+
+		    colPairs_.push_back
+		      (CollisionPairType (bodyName_i, bodyName_j));
 		  }
 	      }
 	  }
