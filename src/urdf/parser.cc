@@ -899,6 +899,7 @@ namespace hpp
 	    joint->isBounded (0, true);
 	    joint->bounds (0, limits->lower, limits->upper);
 	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
+	    joint->torqueBounds (0, -limits->effort, limits->effort);
 	  }
       	jointsMap_[name] = joint;
 	return joint;
@@ -942,6 +943,7 @@ namespace hpp
 	    joint->isBounded (0, true);
 	    joint->bounds (0, limits->lower, limits->upper);
 	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
+	    joint->torqueBounds (0, -limits->effort, limits->effort);
 	  }
       	jointsMap_[name] = joint;
 	return joint;
