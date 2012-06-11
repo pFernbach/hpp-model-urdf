@@ -28,7 +28,7 @@
 
 # include <urdf/model.h>
 
-# include <hpp/model/body.hh>
+# include <hpp/model/capsule-body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
 namespace hpp
@@ -51,8 +51,8 @@ namespace hpp
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
 	typedef hpp::model::Joint JointType;
 	typedef hpp::model::JointShPtr JointPtrType;
-	typedef hpp::model::Body BodyType;
-	typedef hpp::model::BodyShPtr BodyPtrType;
+	typedef hpp::model::CapsuleBody BodyType;
+	typedef hpp::model::CapsuleBodyShPtr BodyPtrType;
 	typedef CjrlHand* HandPtrType;
 	typedef CjrlFoot* FootPtrType;
 

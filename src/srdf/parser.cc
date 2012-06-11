@@ -95,7 +95,16 @@ namespace hpp
 	    // Build distance computation analyses for inner objects.
 	    ObjectPtrsType objects_i = body_i->innerObjects ();
 	    BOOST_FOREACH (CkcdObjectShPtr object_i, objects_i)
-	      body_i->addInnerObject (object_i, true);
+	      {
+		// Treat capsule case separately for fast distance
+		// computation.
+		CapsulePtrType capsule_i
+		  = KIT_DYNAMIC_PTR_CAST (CapsuleType, object_i);
+		if (capsule_i)
+		  body_i->addInnerCapsule (capsule_i, true);
+		else
+		  body_i->addInnerObject (object_i, true);
+	      }
 
 	    BOOST_FOREACH (CkwsJointShPtr joint_j, joints)
 	      {
@@ -118,7 +127,14 @@ namespace hpp
 		    for (unsigned i = 0; i < objects_j.size (); ++i)
 		      {
 			CkcdObjectShPtr object = objects_j[i];
-			body_i->addOuterObject (object, true);
+			// Treat capsule case separately for fast distance
+			// computation.
+			CapsulePtrType capsule
+			  = KIT_DYNAMIC_PTR_CAST (CapsuleType, object);
+			if (capsule)
+			  body_i->addOuterCapsule (capsule, true);
+			else
+			  body_i->addOuterObject (object, true);
 		      }
 
 		    colPairs_.push_back

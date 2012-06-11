@@ -30,7 +30,7 @@
 
 # include <KineoModel/kppJointComponent.h>
 
-# include <hpp/model/body.hh>
+# include <hpp/model/capsule-body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
 namespace hpp
@@ -56,8 +56,10 @@ namespace hpp
 	typedef std::vector<CkcdObjectShPtr> ObjectPtrsType;
 
 	typedef vectorN HppConfigurationType;
-	typedef hpp::model::Body BodyType;
-	typedef hpp::model::BodyShPtr BodyPtrType;
+	typedef hpp::model::CapsuleBody BodyType;
+	typedef hpp::model::CapsuleBodyShPtr BodyPtrType;
+	typedef hpp::geometry::collision::PolySegment CapsuleType;
+	typedef BodyType::capsule_t CapsulePtrType;
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
 
 	/// \brief Default constructor.
