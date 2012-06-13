@@ -725,6 +725,27 @@ namespace hpp
       }
 
       void
+      Parser::fillGaze ()
+      {
+	MapHppJointType::const_iterator gaze =
+	  jointsMap_.find (gazeJointName_);
+	CjrlJoint* gazeJoint = gaze->second->jrlJoint ();
+	robot_->gazeJoint (gazeJoint);
+	vector3d dir, origin;
+	// Gaze direction is defined by the gaze joint local
+	// orientation.
+	dir[0] = 1;
+	dir[1] = 0;
+	dir[2] = 0;
+	// Gaze position should is defined by the gaze joint local
+	// origin.
+	origin[0] = 0;
+	origin[1] = 0;
+	origin[2] = 0;
+	robot_->gaze (dir, origin);
+      }
+
+      void
       Parser::fillHandsAndFeet ()
       {
 	MapHppJointType::const_iterator leftHand =
@@ -1122,6 +1143,9 @@ namespace hpp
 	// initializating the structure.
 	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
 	robot_->setActuatedJoints (actJointsVect);
+
+	// Fill gaze position and direction.
+	fillGaze ();
 
 	// Here we need to use joints initial positions. Make sure to
 	// call this *after* initializating the structure.

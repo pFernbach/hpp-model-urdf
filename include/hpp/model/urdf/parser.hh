@@ -158,6 +158,9 @@ namespace hpp
 				 vector3d& foreFingerAxis,
 				 vector3d& palmNormal) const;
 
+	/// \brief Fill gaze.
+	void fillGaze ();
+
 	/// \brief Fill hands and feet.
 	void
 	fillHandsAndFeet ();
