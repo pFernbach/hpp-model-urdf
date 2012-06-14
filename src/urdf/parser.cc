@@ -693,6 +693,30 @@ namespace hpp
 	{
 	  return vector3d (v[0], v[1], v[2]);
 	}
+
+	void
+	matrix4dToRT (const matrix4d M, matrix3d& R, vector3d& v)
+	{
+	  for (unsigned i = 0; i < 3; ++i)
+	    {
+	      for (unsigned j = 0; j < 3; ++j)
+		R(i, j) = M(i, j);
+	      v[i] = M(i, 3);
+	    }
+	}
+
+	void
+	matrix3dToColumns (const matrix3d R,
+			   vector3d& v0, vector3d& v1, vector3d& v2)
+	{
+	  for (unsigned i = 0; i < 3; ++i)
+	    {
+	      v0[i] = R(i, 0);
+	      v1[i] = R(i, 1);
+	      v2[i] = R(i, 2);
+	    }
+	}
+
       } // end of anonymous namespace.
 
       void
@@ -711,17 +735,12 @@ namespace hpp
 	matrix4d wrist_M_world;
 	world_M_wrist.Inversion (wrist_M_world);
 
+	// Hand to wrist transformation allows defining hand local
+	// center and axes.
 	matrix4d wrist_M_hand = wrist_M_world * world_M_hand;
-
-	for (unsigned i = 0; i < 3; ++i)
-	  center[i] = wrist_M_hand (i, 3);
-
-	thumbAxis = vector4dTo3d
-	  (wrist_M_hand * vector4d (0., 0., 1., 1.));
-	foreFingerAxis = vector4dTo3d
-	  (wrist_M_hand * vector4d (1., 0., 0., 1.));
-	palmNormal = vector4dTo3d
-	  (wrist_M_hand * vector4d (0., 1., 0., 1.));
+	matrix3d wrist_R_hand;
+	matrix4dToRT (wrist_M_hand, wrist_R_hand, center);
+	matrix3dToColumns (wrist_R_hand, thumbAxis, foreFingerAxis, palmNormal);
       }
 
       void
@@ -770,6 +789,7 @@ namespace hpp
 	  {
 	    HandPtrType hand
 	      = factory_.createHand (leftWrist->second->jrlJoint ());
+	    hand->setAssociatedWrist(leftWrist->second->jrlJoint ());
 
 	    vector3d center (0., 0., 0.);
 	    vector3d thumbAxis (0., 0., 0.);
@@ -791,6 +811,7 @@ namespace hpp
 	  {
 	    HandPtrType hand
 	      = factory_.createHand (rightWrist->second->jrlJoint ());
+	    hand->setAssociatedWrist(rightWrist->second->jrlJoint ());
 
 	    vector3d center (0., 0., 0.);
 	    vector3d thumbAxis (0., 0., 0.);
@@ -798,7 +819,7 @@ namespace hpp
 	    vector3d palmNormal (0., 0., 0.);
 
 	    computeHandsInformation
-	      (leftHand, leftWrist,
+	      (rightHand, rightWrist,
 	       center, thumbAxis, foreFingerAxis, palmNormal);
 
 	    hand->setCenter (center);
