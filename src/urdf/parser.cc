@@ -43,7 +43,7 @@
 #include <hpp/model/rotation-joint.hh>
 #include <hpp/model/translation-joint.hh>
 
-#include <hpp/geometry/component/segment.hh>
+#include <hpp/geometry/component/capsule.hh>
 
 #include "hpp/model/urdf/parser.hh"
 #include "hpp/model/urdf/polyhedron-loader.hh"
@@ -625,7 +625,7 @@ namespace hpp
 
 	// Handle the case where visual geometry is a mesh and
 	// collision geometry is a cylinder. In this case the
-	// collision geometry KiteLab is considered to be a segment.
+	// collision geometry KiteLab is considered to be a capsule.
 	if (visual->geometry->type == ::urdf::Geometry::MESH
 	    && collision->geometry->type == ::urdf::Geometry::CYLINDER)
 	  {
@@ -637,27 +637,27 @@ namespace hpp
 	    double length = collisionGeometry->length;
 	    double radius = collisionGeometry->radius;
 
-	    // Create segment component.
+	    // Create capsule component.
 	    using namespace hpp::geometry::component;
-	    SegmentShPtr segment
-	      = Segment::create (link->name, length, radius);
-	    segment->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+	    CapsuleShPtr capsule
+	      = Capsule::create (link->name, length, radius);
+	    capsule->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
 	    CkitMat4 position = computeBodyAbsolutePosition (link,
 							     collision->origin);
 
-	    // Apply additional transformation as segments
+	    // Apply additional transformation as capsules
 	    // are oriented along the x axis, while cylinders in urdf
 	    // are oriented along the z axis.
 	    CkitMat4 zTox;
 	    zTox.rotateY (M_PI / 2);
 	    position = position * zTox;
-	    segment->setAbsolutePosition (position);
+	    capsule->setAbsolutePosition (position);
 
 	    // Add solid component.
 	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (segment));
+	      (CkppSolidComponentRef::create (capsule));
 	  }
       }
 

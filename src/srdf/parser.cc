@@ -101,9 +101,19 @@ namespace hpp
 		CapsulePtrType capsule_i
 		  = KIT_DYNAMIC_PTR_CAST (CapsuleType, object_i);
 		if (capsule_i)
-		  body_i->addInnerCapsule (capsule_i, true);
-		else
-		  body_i->addInnerObject (object_i, true);
+		  {
+		    CkcdPoint endPoint1, endPoint2;
+		    kcdReal radius;
+		    capsule_i->getCapsule (0, endPoint1, endPoint2, radius);
+		    SegmentPtrType segment_i = SegmentType::create ();
+		    segment_i->addSegment (endPoint1, endPoint2, radius);
+		    segment_i->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+		    CkitMat4 position;
+		    capsule_i->getAbsolutePosition (position);
+		    segment_i->setAbsolutePosition (position);
+		    body_i->addInnerCapsule (segment_i, true);
+		  }
+		body_i->addInnerObject (object_i, false);
 	      }
 
 	    BOOST_FOREACH (CkwsJointShPtr joint_j, joints)
@@ -132,9 +142,22 @@ namespace hpp
 			CapsulePtrType capsule
 			  = KIT_DYNAMIC_PTR_CAST (CapsuleType, object);
 			if (capsule)
-			  body_i->addOuterCapsule (capsule, true);
-			else
-			  body_i->addOuterObject (object, true);
+			  {
+			    CkcdPoint endPoint1, endPoint2;
+			    kcdReal radius;
+			    capsule->getCapsule (0, endPoint1, endPoint2,
+						 radius);
+			    SegmentPtrType segment = SegmentType::create ();
+			    segment->addSegment (endPoint1, endPoint2,
+						 radius);
+			    segment
+			      ->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+			    CkitMat4 position;
+			    capsule->getAbsolutePosition (position);
+			    segment->setAbsolutePosition (position);
+			    body_i->addOuterCapsule (segment, true);
+			  }
+			body_i->addOuterObject (object, false);
 		      }
 
 		    colPairs_.push_back
