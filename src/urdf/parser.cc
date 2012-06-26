@@ -386,7 +386,6 @@ namespace hpp
 
 	    vector3d localCom (0., 0., 0.);
 	    matrix3d inertiaMatrix;
-	    inertiaMatrix.setIdentity();
 	    double mass = 0.;
 	    if (inertial)
 	      {
