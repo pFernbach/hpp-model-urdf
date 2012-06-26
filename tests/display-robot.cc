@@ -18,6 +18,8 @@
 
 #define BOOST_TEST_MODULE display-robot
 
+#include <fstream>
+
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 
@@ -26,6 +28,7 @@
 
 #include "hpp/model/urdf/parser.hh"
 #include "hpp/model/srdf/parser.hh"
+#include "hpp/model/rcpdf/parser.hh"
 
 using boost::test_tools::output_test_stream;
 
@@ -41,57 +44,26 @@ BOOST_AUTO_TEST_CASE (display_robot)
   using namespace hpp::model::urdf;
   hpp::model::urdf::Parser urdfParser; 
   hpp::model::srdf::Parser srdfParser; 
+  hpp::model::rcpdf::Parser rcpdfParser; 
   hpp::model::HumanoidRobotShPtr humanoidRobot;
 
-  // if (argc < 2)
-  //   {
-  //     std::cout
-  // 	<< "No model description has been given, "
-  // 	<< "retrieving model using ROS parameter (robot_description)."
-  // 	<< std::endl;
+  humanoidRobot = urdfParser.parse ("package://hrp2_14_description/urdf/hrp2_capsule.urdf");
 
-  //     ros::init (argc, argv, "display_robot");
-  //     ros::NodeHandle nh;
-  //     std::string robotDescription;
-  //     ros::param::param<std::string>
-  // 	("robot_description", robotDescription, "");
-  //     if (robotDescription.empty ())
-  // 	{
-  // 	  std::cout
-  // 	    << "No model available as ROS parameter. Fail."
-  // 	    << std::endl;
-  // 	  usage (argc, argv);
-  // 	  return 1;
-  // 	}
-  //     humanoidRobot = parser.parseStream (robotDescription,
-  // 					  "base_footprint_joint");
-  //   }
-  // else
-  humanoidRobot = urdfParser.parse ("package://hrp2_14_description/urdf/hrp2-capsule.urdf", "base_footprint_joint");
-
-  srdfParser.parse ("package://hrp2_14_description/urdf/hrp2-capsule.urdf",
-		    "package://hrp2_14_description/srdf/hrp2.srdf",
-		    humanoidRobot);
+  srdfParser.parse ("package://hrp2_14_description/urdf/hrp2_capsule.urdf",
+  		    "package://hrp2_14_description/srdf/hrp2_capsule.srdf",
+  		    humanoidRobot);
 
   BOOST_CHECK_EQUAL (!!humanoidRobot, 1);
 
-  for (unsigned i = 0; i < humanoidRobot->countJointComponents (); ++i)
-    {
-      CkwsJointShPtr joint = humanoidRobot->jointComponent (i)->kwsJoint ();
-      CkwsBodyShPtr body = joint->attachedBody ();
+  hpp::model::srdf::Parser::HppConfigurationType config
+    = srdfParser.getHppReferenceConfig ("all", "half_sitting");
 
-      if (body)
-	{
-	  Parser::BodyPtrType hppBody
-	    = KIT_DYNAMIC_PTR_CAST (hpp::model::Body, body);
-	  if (!hppBody)
-	    std::cerr << "Null pointer to body." << std::endl;
+  humanoidRobot->hppSetCurrentConfig (config);
 
-	  std::cout << hppBody->nbDistPairs () << std::endl;
-	}
-    }
+  rcpdfParser.parse ("package://hrp2_14_description/rcpdf/hrp2.rcpdf",
+		     humanoidRobot);
 
-  // parser.displayActuatedJoints (std::cout);
-  // parser.displayEndEffectors (std::cout);
-  // std::cout << *humanoidRobot << std::endl;
+  std::ofstream log ("./display-robot.log");
+  log << *(humanoidRobot.get ()) << std::endl;
+
 }
