@@ -655,9 +655,29 @@ namespace hpp
 	    position = position * zTox;
 	    capsule->setAbsolutePosition (position);
 
+	    // Create a segment that is equivalent to the
+	    // capsule. This segment can be used for fast distance
+	    // computation between two robot bodies.
+	    CkcdPoint endPoint1, endPoint2;
+	    kcdReal segmentRadius;
+	    capsule->getCapsule (0, endPoint1, endPoint2,
+				 segmentRadius);
+	    std::string segmentName = capsule->name ();
+	    segmentName.append ("-segment");
+	    SegmentShPtr segment
+	      = Segment::create (segmentName,
+				     endPoint1,
+				     endPoint2,
+				     radius);
+	    segment->makeCollisionEntity
+	      (CkcdObject::IMMEDIATE_BUILD);
+	    segment->setAbsolutePosition (position);
+
 	    // Add solid component.
 	    joint->kppJoint ()->addSolidComponentRef
 	      (CkppSolidComponentRef::create (capsule));
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (segment));
 	  }
       }
 
