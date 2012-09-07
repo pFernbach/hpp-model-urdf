@@ -30,7 +30,7 @@
 
 # include <KineoModel/kppJointComponent.h>
 
-# include <hpp/geometry/collision/poly-capsule.hh>
+# include <hpp/geometry/component/capsule.hh>
 
 # include <hpp/model/capsule-body.hh>
 # include <hpp/model/humanoid-robot.hh>
@@ -60,10 +60,10 @@ namespace hpp
 	typedef vectorN HppConfigurationType;
 	typedef hpp::model::CapsuleBody BodyType;
 	typedef hpp::model::CapsuleBodyShPtr BodyPtrType;
-	typedef hpp::geometry::collision::PolyCapsule CapsuleType;
-	typedef hpp::geometry::collision::PolyCapsuleShPtr CapsulePtrType;
-	typedef hpp::geometry::collision::PolySegment SegmentType;
-	typedef hpp::geometry::collision::PolySegmentShPtr SegmentPtrType;
+	typedef hpp::geometry::component::Capsule CapsuleType;
+	typedef hpp::geometry::component::CapsuleShPtr CapsulePtrType;
+	typedef hpp::geometry::component::Segment SegmentType;
+	typedef hpp::geometry::component::SegmentShPtr SegmentPtrType;
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
 
 	/// \brief Default constructor.
