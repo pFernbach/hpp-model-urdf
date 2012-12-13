@@ -261,12 +261,12 @@ namespace hpp
 	  }
 	if (!ankle)
 	  {
-	    hppDout (error, "No pointer to suppporting ankle.");
+	    hppDout (error, "No pointer to supporting ankle.");
 	    return false;
 	  }
 	if (!sole)
 	  {
-	    hppDout (error, "No pointer to suppporting sole.");
+	    hppDout (error, "No pointer to supporting sole.");
 	    return false;
 	  }
 
