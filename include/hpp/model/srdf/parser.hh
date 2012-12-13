@@ -164,6 +164,11 @@ namespace hpp
 	isCollisionPairAdded (const std::string& bodyName_1,
 			      const std::string& bodyName_2);
 
+	/// \brief Check if dof vector is consistent with joint.
+	bool areDofsInJoint (const std::vector<double>& dofs,
+			     const std::string& jointName,
+			     std::string& jointType);
+
       private:
 	::urdf::Model urdfModel_;
 	::srdf::Model srdfModel_;

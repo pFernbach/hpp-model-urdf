@@ -187,6 +187,60 @@ namespace hpp
       }
 
       bool
+      Parser::areDofsInJoint (const std::vector<double>& dofs,
+			      const std::string& jointName,
+			      std::string& jointType)
+      {
+	switch (urdfModel_.joints_[jointName]->type)
+	  {
+	  case ::urdf::Joint::REVOLUTE:
+	    if (dofs.size () != 1)
+	      {
+		jointType = "revolute";
+		return false;
+	      }
+	    break;
+	  case ::urdf::Joint::CONTINUOUS:
+	    if (dofs.size () != 1)
+	      {
+		jointType = "continous";
+		return false;
+	      }
+	    break;
+	  case ::urdf::Joint::PRISMATIC:
+	    if (dofs.size () != 1)
+	      {
+		jointType = "prismatic";
+		return false;
+	      }
+	    break;
+	  case ::urdf::Joint::FLOATING:
+	    if (dofs.size () != 6)
+	      {
+		jointType = "floating";
+		return false;
+	      }
+	    break;
+	  case ::urdf::Joint::PLANAR:
+	    if (dofs.size () != 3)
+	      {
+		jointType = "planar";
+		return false;
+	      }
+	    break;
+	  case ::urdf::Joint::FIXED:
+	    if (dofs.size () != 0)
+	      {
+		jointType = "fixed";
+		return false;
+	      }
+	    break;
+	  }
+
+	return true;
+      }
+
+      bool
       Parser::computeFullConfiguration (HppConfigurationType& configuration,
 					const bool isRightFootSupporting,
 					const double& floorHeight)
@@ -276,8 +330,29 @@ namespace hpp
 	      {
 	    	std::vector<double> dofs = it->second;
 
+		std::string jointType;
+		if (!areDofsInJoint (dofs, joint->name (), jointType))
+		  {
+		    hppDout (error,
+			     "Number of joint dofs ("
+			     << dofs.size ()
+			     << ") is inconsistent with joint type ("
+			     << jointType << ") of "
+			     << joint->name ());
+		    hppConfig.clear ();
+		    return hppConfig;
+		  }
+
 	    	BOOST_FOREACH (double dof, dofs)
 	    	  {
+		    if (i == robot_->numberDof ())
+		      {
+			hppDout (error,
+				 "Incorrect number of dofs in configuration.");
+			hppConfig.clear ();
+			return hppConfig;
+		      }
+
 	    	    hppConfig[i] = dof;
 	    	    ++i;
 	    	  }
@@ -291,14 +366,6 @@ namespace hpp
 	if (!computeFullConfiguration (hppConfig, true, 0.))
 	  {
 	    hppDout (error, "Could not compute full configuration.");
-	    hppConfig.clear ();
-	    return hppConfig;
-	  }
-
-	// Check that the configuration has been correctly filled.
-	if (i != robot_->numberDof ())
-	  {
-	    hppDout (error, "Incorrect number of dofs in configuration.");
 	    hppConfig.clear ();
 	    return hppConfig;
 	  }
