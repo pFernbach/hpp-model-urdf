@@ -26,9 +26,7 @@
 #include <KineoModel/kppLicense.h>
 #include <KineoModel/kppJointComponent.h>
 
-#include "hpp/model/urdf/parser.hh"
-#include "hpp/model/srdf/parser.hh"
-#include "hpp/model/rcpdf/parser.hh"
+#include "hpp/model/urdf/util.hh"
 
 using boost::test_tools::output_test_stream;
 
@@ -41,29 +39,12 @@ BOOST_AUTO_TEST_CASE (display_robot)
       return;
     }
   
-  using namespace hpp::model::urdf;
-  hpp::model::urdf::Parser urdfParser; 
-  hpp::model::srdf::Parser srdfParser; 
-  hpp::model::rcpdf::Parser rcpdfParser; 
   hpp::model::HumanoidRobotShPtr humanoidRobot;
 
-  humanoidRobot = urdfParser.parse ("package://hrp2_14_description/urdf/hrp2_capsule.urdf");
-
-  srdfParser.parse ("package://hrp2_14_description/urdf/hrp2_capsule.urdf",
-  		    "package://hrp2_14_description/srdf/hrp2_capsule.srdf",
-  		    humanoidRobot);
-
-  BOOST_CHECK_EQUAL (!!humanoidRobot, 1);
-
-  hpp::model::srdf::Parser::HppConfigurationType config
-    = srdfParser.getHppReferenceConfig ("all", "half_sitting");
-
-  humanoidRobot->hppSetCurrentConfig (config);
-
-  rcpdfParser.parse ("package://hrp2_14_description/rcpdf/hrp2.rcpdf",
-		     humanoidRobot);
+  BOOST_CHECK_EQUAL(hpp::model::urdf::loadRobotModel (humanoidRobot,
+						      "romeo"),
+		    true);
 
   std::ofstream log ("./display-robot.log");
   log << *(humanoidRobot.get ()) << std::endl;
-
 }

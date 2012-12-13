@@ -406,6 +406,59 @@ namespace hpp
 	return true;
       }
 
+      bool
+      loadRobotModel (model::HumanoidRobotShPtr& device,
+		      const std::string& modelName,
+		      const std::string& urdfSuffix,
+		      const std::string& srdfSuffix,
+		      const std::string& rcpdfSuffix)
+      {
+	hpp::model::urdf::Parser urdfParser;
+	hpp::model::srdf::Parser srdfParser;
+	hpp::model::rcpdf::Parser rcpdfParser;
+
+	std::string packagePath
+	  = "package://" + std::string(modelName) + "_description/";
+	std::string urdfPath
+	  = packagePath + "urdf/" + modelName + urdfSuffix + ".urdf";
+	std::string srdfPath
+	  = packagePath + "srdf/" + modelName + srdfSuffix + ".srdf";
+	std::string rcpdfPath
+	  = packagePath + "rcpdf/" + modelName + rcpdfSuffix + ".rcpdf";
+
+	// Build robot model from URDF.
+	device = urdfParser.parse (urdfPath);
+	if (!device)
+	  {
+	    hppDout (error, "Could not parse URDF file.");
+	    return false;
+	  }
+
+	device->isVisible (false);
+
+	// Set Collision Check Pairs
+	if (!srdfParser.parse (urdfPath, srdfPath, device))
+	  {
+	    hppDout (error, "Could not parse SRDF file.");
+	    return false;
+	  }
+
+	// Set robot in a half-sitting configuration;
+	hpp::model::srdf::Parser::HppConfigurationType halfSittingConfig
+	  = srdfParser.getHppReferenceConfig ("all", "half_sitting");
+
+	device->hppSetCurrentConfig (halfSittingConfig);
+
+	// Set contact point properties.
+	if (!rcpdfParser.parse (rcpdfPath, device))
+	  {
+	    hppDout (error, "Could not parse RCPDF file.");
+	    return false;
+	  }
+
+	return true;
+      }
+
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace  hpp.
