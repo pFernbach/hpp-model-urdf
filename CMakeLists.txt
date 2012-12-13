@@ -47,6 +47,7 @@ SEARCH_FOR_BOOST()
 # Search for dependecies.
 ADD_REQUIRED_DEPENDENCY("assimp")
 ADD_REQUIRED_DEPENDENCY("KineoController")
+ADD_REQUIRED_DEPENDENCY("hpp-util >= 0.4")
 ADD_REQUIRED_DEPENDENCY("hpp-model >= 2.1")
 ADD_REQUIRED_DEPENDENCY("hpp-geometry >= 1.0.1")
 ADD_ROSPACK_DEPENDENCY("bullet")
@@ -60,7 +61,7 @@ ADD_ROSPACK_DEPENDENCY("rcpdf")
 # Set header files.
 SET(${PROJECT_NAME}_URDF_HEADERS
   include/hpp/model/urdf/parser.hh
-  include/hpp/model/urdf/polyhedron-loader.hh
+  include/hpp/model/urdf/util.hh
   )
 
 SET(${PROJECT_NAME}_SRDF_HEADERS

@@ -28,6 +28,8 @@
 
 #include <resource_retriever/retriever.h>
 
+#include <hpp/util/debug.hh>
+
 #include "hpp/model/rcpdf/parser.hh"
 
 namespace hpp
@@ -61,30 +63,46 @@ namespace hpp
       Parser::SoleDimensionsType
       Parser::computeSoleDimensions (const bool isRightSole)
       {
+	SoleDimensionsType soleDimensions;
+
 	ContactPtrType contact = isRightSole ?
 	  findContact ("r_sole") : findContact ("l_sole");
 	if (!contact)
-	  throw std::runtime_error ("No contact found for link in RCPDF");
+	  {
+	    hppDout (error, "No contact found for link in RCPDF");
+	    soleDimensions.first = 0;
+	    soleDimensions.second = 0;
+	    return soleDimensions;
+	  }
 	
 	GeometryPtrType geometry = contact->geometry_;
 	if (!geometry)
-	  throw std::runtime_error ("No geometry found for contact in RCPDF");
+	  {
+	    hppDout (error, "No geometry found for contact in RCPDF");
+	    soleDimensions.first = 0;
+	    soleDimensions.second = 0;
+	    return soleDimensions;
+	  }
 
 	// FIXME: For now sole geometry can be only of box type.
 	if (!geometry->type == ::urdf::Geometry::BOX)
-	  throw std::runtime_error ("Cannot handle this geometry type for now");
+	  {
+	    hppDout (error, "Cannot handle this geometry type for now");
+	    soleDimensions.first = 0;
+	    soleDimensions.second = 0;
+	    return soleDimensions;
+	  }
 
 	boost::shared_ptr< ::urdf::Box> box
 	   = dynamic_pointer_cast< ::urdf::Box> (geometry);
 	
-	SoleDimensionsType soleDimensions;
 	soleDimensions.first = box->dim.x;
 	soleDimensions.second = box->dim.y;
 
 	return soleDimensions;
       }
 
-      void
+      bool
       Parser::setFeetSize ()
       {
 	// Get feet in robot.
@@ -92,9 +110,9 @@ namespace hpp
 	FootPtrType leftFoot = robot_->leftFoot ();
 
 	if (!rightFoot)
-	  std::cout << "WARNING: no right foot found." << std::endl;
+	  hppDout (notice, "No right foot found.");
 	if (!leftFoot)
-	  std::cout << "WARNING: no left foot found." << std::endl;
+	  hppDout (notice, "No left foot found.");
 	
 	// Compute sole sizes from contact points in feet.
 	SoleDimensionsType rightSoleDimensions = computeSoleDimensions (true);
@@ -105,9 +123,11 @@ namespace hpp
 				rightSoleDimensions.second);
 	leftFoot->setSoleSize (leftSoleDimensions.first,
 			       leftSoleDimensions.second);
+
+	return true;
       }
 
-      void
+      bool
       Parser::parse (const std::string& contactsResourceName,
 		     Parser::RobotPtrType& robot)
       {
@@ -120,10 +140,10 @@ namespace hpp
 	for (unsigned i = 0; i < contactsResource.size; ++i)
 	  contactsDescription[i] = contactsResource.data.get()[i];
 
-	parseStream (contactsDescription, robot);
+	return parseStream (contactsDescription, robot);
       }
 
-      void
+      bool
       Parser::parseStream (const std::string& contactsDescription,
 			   Parser::RobotPtrType& robot)
       {
@@ -135,10 +155,13 @@ namespace hpp
 	// Parse rcpdf model.
 	rcpdfModel_ = ::rcpdf::parseRCPDF (contactsDescription);
 	if (!rcpdfModel_)
-	  throw std::runtime_error ("failed to open RCPDF file."
-				    " Is the filename location correct?");
+	  {
+	    hppDout (error, "Failed to open RCPDF file."
+		     << " Is the filename location correct?");
+	    return false;
+	  }
 
-	setFeetSize ();
+	return setFeetSize ();
       }
 
     } // end of namespace rcpdf.

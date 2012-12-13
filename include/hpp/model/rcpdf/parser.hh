@@ -74,7 +74,7 @@ namespace hpp
 	/// resource_retriever format.
 	///
 	/// \param contactsResourceName RCPDF resource name
-	void
+	bool
 	parse (const std::string& contactsResourceName,
 	       RobotPtrType& robot);
 
@@ -82,7 +82,7 @@ namespace hpp
 	/// information to humanoid robot.
 	///
 	/// \param contactsDescription RCPDF stream
-	void
+	bool
 	parseStream (const std::string& contactsDescription,
 		     RobotPtrType& robot);
 
@@ -96,7 +96,7 @@ namespace hpp
 	computeSoleDimensions (const bool isRightSole);
 
 	/// \brief Set feet size by reading the feet contact points.
-	void
+	bool
 	setFeetSize ();
 
       private:

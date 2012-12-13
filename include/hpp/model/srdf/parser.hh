@@ -85,7 +85,7 @@ namespace hpp
 	/// reference dof values for the actuated joints, places the
 	/// robot on the floor at a given height, and computes the
 	/// free-flyer joint dof values.
-	void
+	bool
 	computeFullConfiguration (HppConfigurationType& configuration,
 				  const bool isRightFootSupporting = true,
 				  const double& floorHeight = 0.);
@@ -133,7 +133,7 @@ namespace hpp
 	///
 	/// \param robotResourceName URDF resource name
 	/// \param semanticResourceName SRDF resource name
-	void
+	bool
 	parse (const std::string& robotResourceName,
 	       const std::string& semanticResourceName,
 	       RobotPtrType& robot);
@@ -143,14 +143,14 @@ namespace hpp
 	///
 	/// \param robotDescription URDF stream
 	/// \param semanticDescription SRDF stream
-	void
+	bool
 	parseStream (const std::string& robotDescription,
 		     const std::string& semanticDescription,
 		     RobotPtrType& robot);
 
       protected:
 	/// \brief Add collision pairs to robot.
-	void
+	bool
 	addCollisionPairs ();
 
 	/// \brief Check if given body pair is disabled.

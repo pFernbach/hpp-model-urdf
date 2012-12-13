@@ -114,7 +114,7 @@ namespace hpp
 	///
 	/// Each joint in the URDF model is used to build the
 	/// corresponding hpp::model::JointShPtr object.
-	void
+	bool
 	parseJoints ();
 
 	/// \brief Get actuated joints.
@@ -122,11 +122,11 @@ namespace hpp
 	actuatedJoints();
 
 	/// \brief Connect recursively joints to their children.
-	void
+	bool
 	connectJoints (const JointPtrType& rootJoint);
 
 	/// \brief Parse bodies and add them to joints.
-	void addBodiesToJoints();
+	bool addBodiesToJoints();
 
 	/// \brief compute body absolute position.
 	///
@@ -141,7 +141,7 @@ namespace hpp
 	///
 	/// The visual and collision geometries attached to the link
 	/// are used to create the appropriate Kite solid component.
-	void
+	bool
 	addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
 				  const JointPtrType& joint);
 
@@ -171,7 +171,7 @@ namespace hpp
 	std::vector<std::string>
 	getChildrenJoint (const std::string& jointName);
 
-	void getChildrenJoint (const std::string& jointName,
+	bool getChildrenJoint (const std::string& jointName,
 			       std::vector<std::string>& result);
 
 	/// \brief Create free-flyer joint and add it to joints map.

@@ -16,11 +16,9 @@
 // License along with hpp-model-urdf.  If not, see
 // <http://www.gnu.org/licenses/>.
 
-/**
- * \file src/polyhedron-loader.cc
- *
- * \brief Implementation of polyhedron loader functions.
- */
+/// \file src/util.cc
+///
+/// \brief Implementation of utility functions.
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -33,7 +31,9 @@
 
 #include <resource_retriever/retriever.h>
 
-#include "hpp/model/urdf/polyhedron-loader.hh"
+#include <hpp/util/debug.hh>
+
+#include "hpp/model/urdf/util.hh"
 
 namespace fs = boost::filesystem;
 
@@ -177,14 +177,14 @@ namespace hpp
       };
 
       // Mostly stolen from gazebo
-      void buildMesh (const aiScene* scene,
+      bool buildMesh (const aiScene* scene,
 		      const aiNode* node,
 		      std::vector<unsigned>& subMeshIndexes,
 		      const CkppPolyhedronShPtr& mesh)
       {
 	if (!node)
 	  {
-	    return;
+	    return true;
 	  }
 
 	aiMatrix4x4 transform = node->mTransformation;
@@ -239,6 +239,8 @@ namespace hpp
 	  {
 	    buildMesh(scene, node->mChildren[i], subMeshIndexes, mesh);
 	  }
+
+	return true;
       }
 
       void loadTexture(const std::string& resource_path)
@@ -246,7 +248,7 @@ namespace hpp
       }
 
       // Mostly cribbed from gazebo
-      void loadMaterialsForMesh (const std::string& resource_path,
+      bool loadMaterialsForMesh (const std::string& resource_path,
 				 const aiScene* scene,
 				 const std::vector<unsigned> subMeshIndexes,
 				 const CkppPolyhedronShPtr& mesh)
@@ -351,28 +353,38 @@ namespace hpp
 	    mesh->setMaterial (subMeshIndexes[i], subMeshIndexes[i + 1] - 1,
 			       materials[scene->mMeshes[i]->mMaterialIndex]);
 	  }
+
+	return true;
       }
 
-      void
+      bool
       meshFromAssimpScene (const std::string& name,
 			   const aiScene* scene,
 			   const CkppPolyhedronShPtr& mesh)
       {
 	if (!scene->HasMeshes())
 	  {
-	    boost::format fmt
-	      ("No meshes found in file [%s]");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "No meshes found in file " << name);
+	    return false;
 	  }
 
 	std::vector<unsigned> subMeshIndexes;
-	buildMesh(scene, scene->mRootNode, subMeshIndexes, mesh);
+	if (!buildMesh(scene, scene->mRootNode, subMeshIndexes, mesh))
+	  {
+	    hppDout (error, "Could not build mesh.");
+	    return false;
+	  }
 
-	loadMaterialsForMesh(name, scene, subMeshIndexes, mesh);
+	if (!loadMaterialsForMesh(name, scene, subMeshIndexes, mesh))
+	  {
+	    hppDout (error, "Could not load materials for mesh.");
+	    return false;
+	  }
+	
+	return true;
       }
 
-      void
+      bool
       loadPolyhedronFromResource(const std::string& resource_path,
 				 const CkppPolyhedronShPtr& polyhedron)
       {
@@ -381,13 +393,17 @@ namespace hpp
 	const aiScene* scene = importer.ReadFile(resource_path, aiProcess_SortByPType|aiProcess_GenNormals|aiProcess_Triangulate|aiProcess_GenUVCoords|aiProcess_FlipUVs);
 	if (!scene)
 	  {
-	    boost::format fmt
-	      ("Could not load resource [%s]: %s");
-	    fmt % resource_path % importer.GetErrorString();
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Could not load resource " << resource_path);
+	    return false;
 	  }
 
-	meshFromAssimpScene (resource_path, scene, polyhedron);
+	if (!meshFromAssimpScene (resource_path, scene, polyhedron))
+	  {
+	    hppDout (error, "Could not load mesh from assimp scene.");
+	    return false;
+	  }
+
+	return true;
       }
 
     } // end of namespace urdf.

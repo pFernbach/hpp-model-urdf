@@ -38,6 +38,8 @@
 #include <KineoKCDModel/kppKCDCylinder.h>
 #include <KineoKCDModel/kppKCDBox.h>
 
+#include <hpp/util/debug.hh>
+
 #include <hpp/model/anchor-joint.hh>
 #include <hpp/model/freeflyer-joint.hh>
 #include <hpp/model/rotation-joint.hh>
@@ -45,8 +47,8 @@
 
 #include <hpp/geometry/component/capsule.hh>
 
-#include "hpp/model/urdf/parser.hh"
-#include "hpp/model/urdf/polyhedron-loader.hh"
+#include <hpp/model/urdf/parser.hh>
+#include <hpp/model/urdf/util.hh>
 
 namespace hpp
 {
@@ -154,8 +156,13 @@ namespace hpp
 	normalizeFrameOrientation (Parser::UrdfJointConstPtrType urdfJoint)
 	{
 	  if (!urdfJoint)
-	    throw std::runtime_error
-	      ("invalid joint in normalizeFrameOrientation");
+	    {
+	      hppDout (error, "Null pointer in normalizeFrameOrientation");
+	      CkitMat4 result;
+	      result.identity ();
+	      return result;
+	    }
+
 	  CkitMat4 result;
 	  result.identity ();
 
@@ -222,36 +229,36 @@ namespace hpp
       Parser::setSpecialJoints ()
       {
 	if (!findJoint (waistJointName_))
-	  std::cout << "WARNING: no waist joint found" << std::endl;
+	  hppDout (notice, "No waist joint found");
 	else
 	  robot_->waist (findJoint (waistJointName_)->jrlJoint ());
 	if (!findJoint (chestJointName_))
-	  std::cout << "WARNING: no chest joint found" << std::endl;
+	  hppDout (notice, "No chest joint found");
 	else
 	  robot_->chest (findJoint (chestJointName_)->jrlJoint ());
 	if (!findJoint (leftWristJointName_))
-	  std::cout << "WARNING: no left wrist joint found" << std::endl;
+	  hppDout (notice, "No left wrist joint found");
 	else
 	  robot_->leftWrist (findJoint (leftWristJointName_)->jrlJoint ());
 	if (!findJoint (rightWristJointName_))
-	  std::cout << "WARNING: no right wrist joint found" << std::endl;
+	  hppDout (notice, "No right wrist joint found");
 	else
 	  robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
 	if (!findJoint (leftAnkleJointName_))
-	  std::cout << "WARNING: no left ankle joint found" << std::endl;
+	  hppDout (notice, "No left ankle joint found");
 	else
 	  robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
 	if (!findJoint (rightAnkleJointName_))
-	  std::cout << "WARNING: no right ankle joint found" << std::endl;
+	  hppDout (notice, "No right ankle joint found");
 	else
 	  robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
 	if (!findJoint (gazeJointName_))
-	  std::cout << "WARNING: no gaze joint found" << std::endl;
+	  hppDout (notice, "No gaze joint found");
 	else
 	  robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
       }
 
-      void
+      bool
       Parser::parseJoints ()
       {
 	// Create free floating joint.
@@ -260,8 +267,11 @@ namespace hpp
 	position.identity ();
 	rootJoint_ = createFreeflyerJoint ("base_joint", position);
 	if (!rootJoint_)
-	  throw std::runtime_error
-	    ("failed to create root joint (free flyer)");
+	  {
+	    hppDout (error, "Failed to create root joint (free flyer)");
+	    return false;
+	  }
+	
 	robot_->setRootJoint(rootJoint_);
 
 	// Iterate through each "true cinematic" joint and create a
@@ -282,8 +292,9 @@ namespace hpp
 	    switch(it->second->type)
 	      {
 	      case ::urdf::Joint::UNKNOWN:
-		throw std::runtime_error
-		  ("parsed joint has UNKNOWN type, this should not happen");
+		hppDout (error, "Parsed joint has UNKNOWN type,"
+			 << " this should not happen");
+		return false;
 		break;
 	      case ::urdf::Joint::REVOLUTE:
 		createRotationJoint (it->first, position, it->second->limits);
@@ -299,18 +310,20 @@ namespace hpp
 		createFreeflyerJoint (it->first, position);
 		break;
 	      case ::urdf::Joint::PLANAR:
-		throw std::runtime_error ("PLANAR joints are not supported");
+		hppDout (error, "PLANAR joints are not supported");
+		return false;
 		break;
 	      case ::urdf::Joint::FIXED:
 		createAnchorJoint (it->first, position);
 		break;
 	      default:
-		boost::format fmt
-		  ("unknown joint type %1%: should never happen");
-		fmt % (int)it->second->type;
-		throw std::runtime_error (fmt.str ());
+		hppDout (error, "Unknown joint type " << (int)it->second->type
+			 << ": should never happen");
+		return false;
 	      }
 	  }
+	
+	return true;
       }
 
       std::vector<CjrlJoint*> Parser::actuatedJoints ()
@@ -343,7 +356,7 @@ namespace hpp
 	return jointsVect;
       }
 
-      void
+      bool
       Parser::connectJoints (const Parser::JointPtrType& rootJoint)
       {
 	BOOST_FOREACH (const std::string& childName,
@@ -351,13 +364,18 @@ namespace hpp
 	  {
 	    MapHppJointType::const_iterator child = jointsMap_.find (childName);
 	    if (child == jointsMap_.end () && !!child->second)
-	      throw std::runtime_error ("failed to connect joints");
+	      {
+		hppDout (error, "Failed to connect joint " << childName);
+		return false;
+	      }
 	    rootJoint->addChildJoint (child->second);
 	    connectJoints (child->second);
 	  }
+
+	return true;
       }
 
-      void
+      bool
       Parser::addBodiesToJoints ()
       {
         for(MapHppJointType::const_iterator it = jointsMap_.begin();
@@ -378,7 +396,11 @@ namespace hpp
 	    // Get child link.
 	    UrdfLinkConstPtrType link = model_.getLink (childLinkName);
 	    if (!link)
-	      throw std::runtime_error ("inconsistent model");
+	      {
+		hppDout (error, "Link " << childLinkName
+			 << " not found, inconsistent model");
+		return false;
+	      }
 
 	    // Retrieve inertial information.
 	    boost::shared_ptr< ::urdf::Inertial> inertial =
@@ -445,9 +467,8 @@ namespace hpp
 		  }
 	      }
 	    else
-	      std::cerr
-		<< "WARNING: missing inertial information in model"
-		<< std::endl;
+	      hppDout (notice, "missing inertial information in link "
+		       << childLinkName);
 
 	    // Create dynamic body and fill inertial information.
 	    CjrlBody* jrlBody = factory_.createBody ();
@@ -470,7 +491,11 @@ namespace hpp
 	      {
 		JointPtrType hppJoint
 		  = KIT_DYNAMIC_PTR_CAST (JointType, it->second);
-		addSolidComponentToJoint (link, hppJoint);
+		if (!addSolidComponentToJoint (link, hppJoint))
+		  {
+		    hppDout (error, "Could not add solid component to joint.");
+		    return false;
+		  }
 
 		BodyPtrType body
 		  = KIT_DYNAMIC_PTR_CAST (BodyType,
@@ -478,6 +503,8 @@ namespace hpp
 		body->name (childLinkName);
 	      }
 	  }
+
+	return true;
       }
 
       CkitMat4
@@ -508,7 +535,7 @@ namespace hpp
 	return position;
       }
 
-      void
+      bool
       Parser::addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
 					const JointPtrType& joint)
       {
@@ -533,10 +560,10 @@ namespace hpp
 	    // meshes are the same.
 	    if (visualFilename != collisionFilename)
 	      {
-		boost::format fmt
-		  ("Unhandled:visual and collision meshes not the same for %s");
-		fmt % link->name;
-		throw std::runtime_error (fmt.str ());
+		hppDout (error,
+			 "Unhandled:visual and collision meshes not the same for "
+			 << link->name);
+		return false;
 	      }
 
 	    // Create Kite polyhedron component by parsing Collada
@@ -679,6 +706,8 @@ namespace hpp
 	    joint->kppJoint ()->addSolidComponentRef
 	      (CkppSolidComponentRef::create (segment));
 	  }
+
+	return true;
       }
 
       void
@@ -697,8 +726,8 @@ namespace hpp
       	/* Rx, Ry */
       	for(unsigned int i = 3; i < 5; i++){
       	  hppRootJoint->isBounded (i, true);
-      	  hppRootJoint->lowerBound (i, -M_PI/4);
-      	  hppRootJoint->upperBound (i, M_PI/4);
+      	  hppRootJoint->lowerBound (i, -M_PI/6);
+      	  hppRootJoint->upperBound (i, M_PI/6);
       	}
       	/* Rz */
       	jrlRootJoint->lowerBound (5, -std::numeric_limits<double>::infinity ());
@@ -884,7 +913,7 @@ namespace hpp
 	return result;
       }
 
-      void
+      bool
       Parser::getChildrenJoint (const std::string& jointName,
 				std::vector<std::string>& result)
       {
@@ -895,10 +924,9 @@ namespace hpp
 
 	if (!joint && jointName != "base_joint")
 	  {
-	    boost::format fmt
-	      ("failed to retrieve children joints of joint %s");
-	    fmt % jointName;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Failed to retrieve children joints of joint "
+		     << jointName);
+	    return false;
 	  }
 
 	boost::shared_ptr<const ::urdf::Link> childLink;
@@ -908,7 +936,10 @@ namespace hpp
 	  childLink = model_.getLink (joint->child_link_name);
 
 	if (!childLink)
-	  throw std::runtime_error ("failed to retrieve children link");
+	  {
+	    hppDout (error, "Failed to retrieve children link of joint "
+		     << jointName);
+	  }
 
        	const std::vector<jointPtr_t>& jointChildren =
 	  childLink->child_joints;
@@ -918,23 +949,31 @@ namespace hpp
 	    if (jointsMap_.count(joint->name) > 0)
 	      result.push_back (joint->name);
 	    else
-	      getChildrenJoint (joint->name, result);
+	      if (!getChildrenJoint (joint->name, result))
+		{
+		  hppDout (error, "Could not add children joint to joint "
+			   << joint->name);
+		  return false;
+		}
 	  }
+
+	return true;
       }
 
       Parser::JointPtrType
       Parser::createFreeflyerJoint (const std::string& name,
 				    const CkitMat4& mat)
       {
+	JointPtrType joint;
 	if (jointsMap_.find (name) != jointsMap_.end ())
 	  {
-	    boost::format fmt
-	      ("duplicated free flyer joint %s");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Duplicated free flyer joint "
+		     << name);
+	    joint.reset ();
+	    return joint;
 	  }
 
-      	JointPtrType joint = hpp::model::FreeflyerJoint::create (name, mat);
+      	joint = hpp::model::FreeflyerJoint::create (name, mat);
 	for (unsigned i = 0; i < 6; ++i)
 	  joint->isBounded (i, false);
       	jointsMap_[name] = joint;
@@ -946,15 +985,16 @@ namespace hpp
 				   const CkitMat4& mat,
 				   const Parser::UrdfJointLimitsPtrType& limits)
       {
+	JointPtrType joint;
 	if (jointsMap_.find (name) != jointsMap_.end ())
 	  {
-	    boost::format fmt
-	      ("duplicated rotation joint %s");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Duplicated rotation joint "
+		     << name);
+	    joint.reset ();
+	    return joint;
 	  }
 
-      	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
+	joint = hpp::model::RotationJoint::create (name, mat);
 	if (limits)
 	  {
 	    joint->isBounded (0, true);
@@ -970,15 +1010,16 @@ namespace hpp
       Parser::createContinuousJoint (const std::string& name,
 				     const CkitMat4& mat)
       {
+	JointPtrType joint;
 	if (jointsMap_.find (name) != jointsMap_.end ())
 	  {
-	    boost::format fmt
-	      ("duplicated continous joint %s");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Duplicated continuous joint "
+		     << name);
+	    joint.reset ();
+	    return joint;
 	  }
 
-      	JointPtrType joint = hpp::model::RotationJoint::create (name, mat);
+      	joint = hpp::model::RotationJoint::create (name, mat);
 	joint->isBounded (0, false);
       	jointsMap_[name] = joint;
 	return joint;
@@ -990,15 +1031,16 @@ namespace hpp
 				      const Parser::
 				      UrdfJointLimitsPtrType& limits)
       {
+	JointPtrType joint;
 	if (jointsMap_.find (name) != jointsMap_.end ())
 	  {
-	    boost::format fmt
-	      ("duplicated translation joint %s");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Duplicated translation joint "
+		     << name);
+	    joint.reset ();
+	    return joint;
 	  }
 
-      	JointPtrType joint = hpp::model::TranslationJoint::create (name, mat);
+      	joint = hpp::model::TranslationJoint::create (name, mat);
 	if (limits)
 	  {
 	    joint->isBounded (0, true);
@@ -1013,15 +1055,16 @@ namespace hpp
       Parser::JointPtrType
       Parser::createAnchorJoint (const std::string& name, const CkitMat4& mat)
       {
+	JointPtrType joint;
 	if (jointsMap_.find (name) != jointsMap_.end ())
 	  {
-	    boost::format fmt
-	      ("duplicated anchor joint %s");
-	    fmt % name;
-	    throw std::runtime_error (fmt.str ());
+	    hppDout (error, "Duplicated anchor joint "
+		     << name);
+	    joint.reset ();
+	    return joint;
 	  }
 
-      	JointPtrType joint = hpp::model::AnchorJoint::create (name, mat);
+      	joint = hpp::model::AnchorJoint::create (name, mat);
       	jointsMap_[name] = joint;
 	return joint;
       }
@@ -1095,8 +1138,13 @@ namespace hpp
 	// Retrieve corresponding joint in URDF tree.
 	UrdfJointConstPtrType joint = model_.getJoint (currentJointName);
 	if (!joint)
-	  throw std::runtime_error
-	    ("failed to retrieve parent while computing joint position");
+	  {
+	    hppDout (error,
+		     "Failed to retrieve parent while computing joint position");
+	    CkitMat4 result;
+	    result.identity ();
+	    return result;
+	  }
 
 	// Get transform from parent link to joint.
 	::urdf::Pose jointToParentTransform =
@@ -1148,16 +1196,23 @@ namespace hpp
 
 	// Parse urdf model.
 	if (!model_.initString (robotDescription))
-	  throw std::runtime_error ("failed to open URDF file."
-				    " Is the filename location correct?");
+	  {
+	    hppDout (error, "Failed to open URDF file."
+		     << " Is the filename location correct?");
+	    robot_.reset ();
+	    return robot_;
+	  }
 
 	// Get names of special joints.
 	findSpecialJoints ();
 
 	// Look for joints in the URDF model tree.
-	parseJoints ();
-	if (!rootJoint_)
-	  throw std::runtime_error ("failed to parse actuated joints");
+	if (!parseJoints ())
+	  {
+	    hppDout (error, "Could not parse joints.");
+	    robot_.reset ();
+	    return robot_;
+	  }
 
 	// Create the kinematic tree.
 	// We iterate over the URDF root joints to connect them to the
@@ -1165,16 +1220,30 @@ namespace hpp
 	// in the whole tree using the connectJoints method.
 	boost::shared_ptr<const ::urdf::Link> rootLink = model_.getRoot ();
 	if (!rootLink)
-	  throw std::runtime_error ("URDF model is missing a root link");
+	  {
+	    hppDout (error, "URDF model is missing a root link");
+	    robot_.reset ();
+	    return robot_;
+	  }
 
 	typedef boost::shared_ptr<const ::urdf::Joint> JointPtr_t;
-	connectJoints (rootJoint_);
+	if (!connectJoints (rootJoint_))
+	  {
+	    hppDout (error, "Could not connect joints.");
+	    robot_.reset ();
+	    return robot_;
+	  }
 
 	// Look for special joints and attach them to the model.
 	setSpecialJoints ();
 
 	// Add corresponding body (link) to each joint.
-	addBodiesToJoints ();
+	if (!addBodiesToJoints ())
+	  {
+	    hppDout (error, "Could not add bodies to joints.");
+	    robot_.reset ();
+	    return robot_;
+	  }
 
 	// Initialize dynamic part.
 	robot_->initialize();

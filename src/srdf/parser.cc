@@ -30,6 +30,8 @@
 
 #include <urdf/model.h>
 
+#include <hpp/util/debug.hh>
+
 #include "hpp/model/srdf/parser.hh"
 
 namespace hpp
@@ -75,7 +77,7 @@ namespace hpp
 	  }
       }
 
-      void
+      bool
       Parser::addCollisionPairs ()
       {
 	// Retrieve joints.
@@ -140,6 +142,8 @@ namespace hpp
 		  }
 	      }
 	  }
+
+	return true;
       }
 
       bool
@@ -182,7 +186,7 @@ namespace hpp
 	return false;
       }
 
-      void
+      bool
       Parser::computeFullConfiguration (HppConfigurationType& configuration,
 					const bool isRightFootSupporting,
 					const double& floorHeight)
@@ -197,11 +201,20 @@ namespace hpp
 	  robot_->rightFoot () : robot_->leftFoot ();
 
 	if (!waist)
-	  throw std::runtime_error ("No pointer to waist.");
+	  {
+	    hppDout (error, "No pointer to waist.");
+	    return false;
+	  }
 	if (!ankle)
-	  throw std::runtime_error ("No pointer to suppporting ankle.");
+	  {
+	    hppDout (error, "No pointer to suppporting ankle.");
+	    return false;
+	  }
 	if (!sole)
-	  throw std::runtime_error ("No pointer to suppporting sole.");
+	  {
+	    hppDout (error, "No pointer to suppporting sole.");
+	    return false;
+	  }
 
 	// Compute waist transformation in floor given an absolute
 	// (right) foot transformation.
@@ -232,6 +245,8 @@ namespace hpp
 	configuration[3] = atan2 (waistTInFloor(1,2), waistTInFloor(2,2));
 	configuration[4] = - asin (waistTInFloor(0,2));
 	configuration[5] = atan2 (waistTInFloor(0,1), waistTInFloor(0,0));
+
+	return true;
       }
 
       Parser::HppConfigurationType
@@ -273,14 +288,22 @@ namespace hpp
 	// free-flyer joint dof values.
 	// We make for now the strong assumption that the floor is
 	// flat and at a null height.
-	computeFullConfiguration (hppConfig, true, 0.);
+	if (!computeFullConfiguration (hppConfig, true, 0.))
+	  {
+	    hppDout (error, "Could not compute full configuration.");
+	    hppConfig.clear ();
+	    return hppConfig;
+	  }
 
 	// Check that the configuration has been correctly filled.
 	if (i != robot_->numberDof ())
-	  throw std::runtime_error
-	    ("Incorrect number of dofs in configuration.");
-	else
-	  return hppConfig;
+	  {
+	    hppDout (error, "Incorrect number of dofs in configuration.");
+	    hppConfig.clear ();
+	    return hppConfig;
+	  }
+
+	return hppConfig;
       }
 
       Parser::ConfigurationType
@@ -300,10 +323,11 @@ namespace hpp
 	  }
 
 	// Throw error if reference configuration is not found.
-	throw std::runtime_error ("Reference configuration not found.");
+	hppDout (error, "Reference configuration " << stateName
+		 << " in group " << groupName << " not found.");
       }
 
-      void
+      bool
       Parser::parse (const std::string& robotResourceName,
 		     const std::string& semanticResourceName,
 		     Parser::RobotPtrType& robot)
@@ -324,10 +348,10 @@ namespace hpp
 	for (unsigned i = 0; i < semanticResource.size; ++i)
 	  semanticDescription[i] = semanticResource.data.get()[i];
 
-	parseStream (robotDescription, semanticDescription, robot);
+	return parseStream (robotDescription, semanticDescription, robot);
       }
 
-      void
+      bool
       Parser::parseStream (const std::string& robotDescription,
 			   const std::string& semanticDescription,
 			   Parser::RobotPtrType& robot)
@@ -341,16 +365,29 @@ namespace hpp
 
 	// Parse urdf model.
 	if (!urdfModel_.initString (robotDescription))
-	  throw std::runtime_error ("failed to open URDF file."
-				    " Is the filename location correct?");
-
+	  {
+	    hppDout (error,
+		     "Failed to open URDF file."
+		     << " Is the filename location correct?");
+	    return false;
+	  }
+	
 	// Parse srdf model.
 	if (!srdfModel_.initString (urdfModel_, semanticDescription))
-	  throw std::runtime_error ("failed to open SRDF file."
-				    " Is the filename location correct?");
+	  {
+	    hppDout (error, "Failed to open SRDF file."
+		     << " Is the filename location correct?");
+	    return false;
+	  }
 
 	// Add collision pairs.
-	addCollisionPairs ();
+	if (!addCollisionPairs ())
+	  {
+	    hppDout (error, "Failed to add collision pairs.");
+	    return false;
+	  }
+
+	return true;
       }
 
     } // end of namespace srdf.
