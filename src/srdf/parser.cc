@@ -392,6 +392,8 @@ namespace hpp
 	// Throw error if reference configuration is not found.
 	hppDout (error, "Reference configuration " << stateName
 		 << " in group " << groupName << " not found.");
+	ConfigurationType config;
+	return config;
       }
 
       bool
