@@ -854,6 +854,8 @@ namespace hpp
 	    hand->setPalmNormal (palmNormal);
 	    robot_->leftHand (hand);
 	  }
+	else
+	  hppDout (notice, "Could not set left hand");
 
 	if (rightHand != jointsMap_.end () && rightWrist != jointsMap_.end ())
 	  {
@@ -877,6 +879,8 @@ namespace hpp
 
 	    robot_->rightHand (hand);
 	  }
+	else
+	  hppDout (notice, "Could not set right hand");
 
 	if (leftFoot != jointsMap_.end () && leftAnkle != jointsMap_.end ())
 	  {
@@ -890,6 +894,8 @@ namespace hpp
 
 	    robot_->leftFoot (foot);
 	  }
+	else
+	  hppDout (notice, "Could not set left foot");
 
 	if (rightFoot != jointsMap_.end () && rightAnkle != jointsMap_.end ())
 	  {
@@ -903,6 +909,8 @@ namespace hpp
 
 	    robot_->rightFoot (foot);
 	  }
+	else
+	  hppDout (notice, "Could not set right foot");
       }
 
       std::vector<std::string>
