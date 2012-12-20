@@ -357,6 +357,15 @@ namespace hpp
 	    	    ++i;
 	    	  }
 	      }
+	    else
+	      if (joint->name ()!= "base_joint"
+		  && joint->kwsJoint ()->countDofs () != 0)
+	      {
+		hppDout (error, "Reference dof values for joint "
+			 << joint->name () << " not found.");
+		hppConfig[i] = 0;
+		++i;
+	      }
 	  }
 
 	// Use the actuated joints dof values to compute the
