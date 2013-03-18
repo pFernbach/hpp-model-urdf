@@ -571,7 +571,13 @@ namespace hpp
 	    // file.
 	    CkppKCDPolyhedronShPtr polyhedron
 	      = CkppKCDPolyhedron::create (link->name);
-	    loadPolyhedronFromResource (visualFilename, polyhedron);
+	    if (!loadPolyhedronFromResource (visualFilename, scale, polyhedron))
+	      {
+		hppDout (error,
+			 "Could not load polyhedron from resource for "
+			 << link->name);
+		return false;
+	      }
 	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
 
 	    // Compute body position in world frame.
