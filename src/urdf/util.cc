@@ -438,6 +438,7 @@ namespace hpp
 	    hppDout (error, "Could not parse URDF file.");
 	    return false;
 	  }
+	hppDout (notice, "Finished parsing URDF file.");
 
 	device->isVisible (false);
 
@@ -447,6 +448,8 @@ namespace hpp
 	    hppDout (error, "Could not parse SRDF file.");
 	    return false;
 	  }
+	else
+	  hppDout (notice, "Finished parsing SRDF file.");
 
 	// Set robot in a half-sitting configuration;
 	hpp::model::srdf::Parser::HppConfigurationType halfSittingConfig
@@ -460,6 +463,8 @@ namespace hpp
 	    hppDout (error, "Could not parse RCPDF file.");
 	    return false;
 	  }
+	else
+	  hppDout (notice, "Finished parsing RCPDF file.");
 
 	return true;
       }
