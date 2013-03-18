@@ -177,7 +177,8 @@ namespace hpp
       };
 
       // Mostly stolen from gazebo
-      bool buildMesh (const aiScene* scene,
+      bool buildMesh (const ::urdf::Vector3& scale,
+		      const aiScene* scene,
 		      const aiNode* node,
 		      std::vector<unsigned>& subMeshIndexes,
 		      const CkppPolyhedronShPtr& mesh)
@@ -215,7 +216,9 @@ namespace hpp
 	      {
 		aiVector3D p = input_mesh->mVertices[j];
 		p *= transform;
-		mesh->addPoint (CkitPoint3 (p.x, p.y, p.z));
+		mesh->addPoint (CkitPoint3 (p.x * scale.x,
+					    p.y * scale.y,
+					    p.z * scale.z));
 	      }
 
 	    // add the indices
@@ -237,7 +240,7 @@ namespace hpp
 
 	for (uint32_t i=0; i < node->mNumChildren; ++i)
 	  {
-	    buildMesh(scene, node->mChildren[i], subMeshIndexes, mesh);
+	    buildMesh(scale, scene, node->mChildren[i], subMeshIndexes, mesh);
 	  }
 
 	return true;
@@ -359,6 +362,7 @@ namespace hpp
 
       bool
       meshFromAssimpScene (const std::string& name,
+			   const ::urdf::Vector3& scale,
 			   const aiScene* scene,
 			   const CkppPolyhedronShPtr& mesh)
       {
@@ -369,7 +373,7 @@ namespace hpp
 	  }
 
 	std::vector<unsigned> subMeshIndexes;
-	if (!buildMesh(scene, scene->mRootNode, subMeshIndexes, mesh))
+	if (!buildMesh(scale, scene, scene->mRootNode, subMeshIndexes, mesh))
 	  {
 	    hppDout (error, "Could not build mesh.");
 	    return false;
@@ -386,6 +390,7 @@ namespace hpp
 
       bool
       loadPolyhedronFromResource(const std::string& resource_path,
+				 const ::urdf::Vector3& scale,
 				 const CkppPolyhedronShPtr& polyhedron)
       {
 	Assimp::Importer importer;
@@ -397,7 +402,7 @@ namespace hpp
 	    return false;
 	  }
 
-	if (!meshFromAssimpScene (resource_path, scene, polyhedron))
+	if (!meshFromAssimpScene (resource_path, scale, scene, polyhedron))
 	  {
 	    hppDout (error, "Could not load mesh from assimp scene.");
 	    return false;

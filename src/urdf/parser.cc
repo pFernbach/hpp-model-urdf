@@ -555,6 +555,7 @@ namespace hpp
 	      = dynamic_pointer_cast< ::urdf::Mesh> (collision->geometry);
 	    std::string visualFilename = visualGeometry->filename;
 	    std::string collisionFilename = collisionGeometry->filename;
+	    ::urdf::Vector3 scale = visualGeometry->scale;
 
 	    // FIXME: We assume for now that visual and collision
 	    // meshes are the same.

@@ -35,6 +35,7 @@ namespace hpp
       /// \brief Load polyhedron from resource.
       bool
       loadPolyhedronFromResource (const std::string& filename,
+				  const ::urdf::Vector3& scale,
 				  const CkppPolyhedronShPtr& polyhedron);
 
       /// \brief Load robot model by name
