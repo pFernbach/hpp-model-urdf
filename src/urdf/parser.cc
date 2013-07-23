@@ -714,6 +714,34 @@ namespace hpp
 	      (CkppSolidComponentRef::create (segment));
 	  }
 
+	// Handle the case where visual geometry is a mesh and
+	// collision geometry is a box. In this case the collision
+	// geometry KiteLab is considered to be also a mesh.
+	if (visual->geometry->type == ::urdf::Geometry::MESH
+	    && collision->geometry->type == ::urdf::Geometry::BOX)
+	  {
+	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
+	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
+	    std::string visualFilename = visualGeometry->filename;
+	    ::urdf::Vector3 scale = visualGeometry->scale;
+
+	    // Create Kite polyhedron component by parsing Collada
+	    // file.
+	    CkppKCDPolyhedronShPtr polyhedron
+	      = CkppKCDPolyhedron::create (link->name);
+	    loadPolyhedronFromResource (visualFilename, scale, polyhedron);
+	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
+
+	    // Compute body position in world frame.
+	    CkitMat4 position = computeBodyAbsolutePosition (link,
+							     visual->origin);
+	    polyhedron->setAbsolutePosition (position);
+
+	    // Add solid component.
+	    joint->kppJoint ()->addSolidComponentRef
+	      (CkppSolidComponentRef::create (polyhedron));
+	  }
+
 	return true;
       }
 
