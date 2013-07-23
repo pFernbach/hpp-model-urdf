@@ -26,9 +26,6 @@
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
-#include <LinearMath/btMatrix3x3.h>
-#include <LinearMath/btQuaternion.h>
-
 #include <resource_retriever/retriever.h>
 
 #include <KineoModel/kppSMLinearComponent.h>
@@ -1130,13 +1127,20 @@ namespace hpp
       {
 	CkitMat4 t;
 
-	// Fill rotation part.
-	btQuaternion q (p.rotation.x, p.rotation.y,
-			p.rotation.z, p.rotation.w);
-	btMatrix3x3 rotationMatrix (q);
-	for (unsigned i = 0; i < 3; ++i)
-	  for (unsigned j = 0; j < 3; ++j)
-	    t(i, j) = rotationMatrix[i][j];
+	// Fill rotation part: convert quaternion to rotation matrix.
+	double q0 = p.rotation.w;
+	double q1 = p.rotation.x;
+	double q2 = p.rotation.y;
+	double q3 = p.rotation.z;
+	t(0,0) = q0*q0 + q1*q1 - q2*q2 - q3*q3;
+	t(0,1) = 2*q1*q2 - 2*q0*q3;
+	t(0,2) = 2*q1*q3 + 2*q0*q2;
+	t(1,0) = 2*q1*q2 + 2*q0*q3;
+	t(1,1) = q0*q0 - q1*q1 + q2*q2 - q3*q3;
+	t(1,2) = 2*q2*q3 - 2*q0*q1;
+	t(2,0) = 2*q1*q3 - 2*q0*q2;
+	t(2,1) = 2*q2*q3 + 2*q0*q1;
+	t(2,2) = q0*q0 - q1*q1 - q2*q2 + q3*q3;
 
 	// Fill translation part.
 	t(0, 3) = p.position.x;
