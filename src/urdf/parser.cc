@@ -463,9 +463,10 @@ namespace hpp
 			inertiaMatrix(i, j) = inertiaMatrixTransform(i, j);
 		  }
 	      }
-	    else
+	    else {
 	      hppDout (notice, "missing inertial information in link "
 		       << childLinkName);
+	    }
 
 	    // Create dynamic body and fill inertial information.
 	    CjrlBody* jrlBody = factory_.createBody ();
@@ -886,8 +887,9 @@ namespace hpp
 	    hand->setPalmNormal (palmNormal);
 	    robot_->leftHand (hand);
 	  }
-	else
+	else {
 	  hppDout (notice, "Could not set left hand");
+	}
 
 	if (rightHand != jointsMap_.end () && rightWrist != jointsMap_.end ())
 	  {
@@ -911,8 +913,9 @@ namespace hpp
 
 	    robot_->rightHand (hand);
 	  }
-	else
+	else {
 	  hppDout (notice, "Could not set right hand");
+	}
 
 	if (leftFoot != jointsMap_.end () && leftAnkle != jointsMap_.end ())
 	  {
@@ -926,8 +929,9 @@ namespace hpp
 
 	    robot_->leftFoot (foot);
 	  }
-	else
+	else {
 	  hppDout (notice, "Could not set left foot");
+	}
 
 	if (rightFoot != jointsMap_.end () && rightAnkle != jointsMap_.end ())
 	  {
@@ -941,8 +945,9 @@ namespace hpp
 
 	    robot_->rightFoot (foot);
 	  }
-	else
+	else {
 	  hppDout (notice, "Could not set right foot");
+	}
       }
 
       std::vector<std::string>

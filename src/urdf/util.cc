@@ -68,7 +68,7 @@ namespace hpp
 	  return to_read;
 	}
 
-	size_t Write (const void* buffer, size_t size, size_t count) { return 0; }
+	size_t Write (const void*, size_t, size_t) { return 0; }
 
 	aiReturn Seek (size_t offset, aiOrigin origin)
 	{
@@ -448,8 +448,9 @@ namespace hpp
 	    hppDout (error, "Could not parse SRDF file.");
 	    return false;
 	  }
-	else
+	else {
 	  hppDout (notice, "Finished parsing SRDF file.");
+	}
 
 	// Set robot in a half-sitting configuration;
 	hpp::model::srdf::Parser::HppConfigurationType halfSittingConfig
@@ -463,8 +464,9 @@ namespace hpp
 	    hppDout (error, "Could not parse RCPDF file.");
 	    return false;
 	  }
-	else
+	else {
 	  hppDout (notice, "Finished parsing RCPDF file.");
+	}
 
 	return true;
       }

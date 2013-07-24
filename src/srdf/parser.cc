@@ -30,6 +30,7 @@
 
 #include <urdf/model.h>
 
+#include <hpp/util/assertion.hh>
 #include <hpp/util/debug.hh>
 
 #include "hpp/model/srdf/parser.hh"
@@ -234,6 +235,8 @@ namespace hpp
 		jointType = "fixed";
 		return false;
 	      }
+	  default:
+	    HPP_ASSERT (0 && "Unknown type of joint.");
 	    break;
 	  }
 

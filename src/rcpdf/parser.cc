@@ -109,10 +109,12 @@ namespace hpp
 	FootPtrType rightFoot = robot_->rightFoot ();
 	FootPtrType leftFoot = robot_->leftFoot ();
 
-	if (!rightFoot)
+	if (!rightFoot) {
 	  hppDout (notice, "No right foot found.");
-	if (!leftFoot)
+	}
+	if (!leftFoot) {
 	  hppDout (notice, "No left foot found.");
+	}
 	
 	// Compute sole sizes from contact points in feet.
 	SoleDimensionsType rightSoleDimensions = computeSoleDimensions (true);
