@@ -26,7 +26,7 @@
 # include <string>
 # include <map>
 
-# include <srdf/model.h>
+# include <srdfdom/model.h>
 
 # include <KineoModel/kppJointComponent.h>
 
