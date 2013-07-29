@@ -38,27 +38,21 @@ namespace hpp
 				  const ::urdf::Vector3& scale,
 				  const CkppPolyhedronShPtr& polyhedron);
 
-      /// \brief Load robot model by name
+      /// Load robot model by name
       ///
       /// \param modelName robot model name
-      ///
-      /// \param penetration dynamic penetration allowed to validate
-      /// direct paths
-      ///
+      /// \param robotDataDir directory where robot data is installed
       /// \param urdfSuffix suffix for urdf file
+      /// \param srdfSuffix suffix for srdf file
+      /// \param rcpdfSuffix suffix for rcpdf file
       ///
-      /// \param srdfSuffix suffix for urdf file
-      ///
-      /// \param rcpdfSuffix suffix for urdf file
-      ///
-      /// \note This function works under the assumption that there
-      /// exists a ros package ${modelName}_description in which the
-      /// directory urdf(resp. srdf and rcpdf) contains the file
-      /// ${modelName}${urdfSuffix}.urdf (resp
-      /// ${modelName}${srdfSuffix}.srdf and
-      /// ${modelName}${rcpdfSuffix}.rcpdf)
+      /// \note This function reads the following files:
+      /// \li ${robotDataDir}/urdf/${modelName}${urdfSuffix}.urdf
+      /// \li ${robotDataDir}/srdf/${modelName}${srdfSuffix}.srdf and
+      /// \li ${robotDataDir}/rcpdf/${modelName}${rcpdfSuffix}.rcpdf)
       bool loadRobotModel (model::HumanoidRobotShPtr& device,
 			   const std::string& modelName,
+			   const std::string& robotDataDir,
 			   const std::string& urdfSuffix = "",
 			   const std::string& srdfSuffix = "",
 			   const std::string& rcpdfSuffix = "");

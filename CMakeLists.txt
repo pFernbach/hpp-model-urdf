@@ -32,6 +32,9 @@ SET(PROJECT_URL "No webpage yet...")
 
 SETUP_PROJECT()
 
+SET(TEST_WITH_ROMEO ON CACHE BOOL
+  "Enable test with Romeo model: trigger dependency to romeo package.")
+
 # Profiling flags when building with DEBUG
 #-----------------------------------------
 IF(CMAKE_BUILD_TYPE MATCHES "DEBUG")
@@ -55,6 +58,10 @@ ADD_REQUIRED_DEPENDENCY("urdf")
 ADD_REQUIRED_DEPENDENCY("urdfdom")
 ADD_REQUIRED_DEPENDENCY("srdfdom")
 ADD_REQUIRED_DEPENDENCY("rcpdf")
+
+IF (${TEST_WITH_ROMEO} STREQUAL ON)
+  ADD_REQUIRED_DEPENDENCY ("romeo_description")
+ENDIF()
 
 # Set header files.
 SET(${PROJECT_NAME}_URDF_HEADERS

@@ -1,1 +1,4 @@
-                                                                -*- outline -*-
+2013-07-31
+	Modification of hpp::model::urdf::loadRobotModel prototype.
+	An argument has been added to specify the directory where the robot
+	model is installed. Refer to function documentation for details.

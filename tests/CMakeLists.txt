@@ -36,8 +36,12 @@ ADD_DEFINITIONS(-DTEST_DIRECTORY="${CMAKE_SOURCE_DIR}/tests/data")
 # This macro will create a binary from `NAME.cc', link it against
 # Boost and add it to the test suite.
 #
-MACRO(ADD_TESTCASE NAME)
-  ADD_EXECUTABLE(${NAME} ${NAME}.cc)
+MACRO(ADD_TESTCASE NAME GENERATED)
+  IF (${GENERATED} STREQUAL TRUE)
+    ADD_EXECUTABLE(${NAME} ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cc)
+  ELSE()
+    ADD_EXECUTABLE(${NAME} ${NAME}.cc)
+  ENDIF()
   ADD_TEST(${NAME} ${RUNTIME_OUTPUT_DIRECTORY}/${NAME})
 
   # Link against Boost and project library.
@@ -51,5 +55,8 @@ MACRO(ADD_TESTCASE NAME)
 ENDMACRO(ADD_TESTCASE)
 
 # Generated test.
-ADD_TESTCASE(display-robot)
-KINEO_STANDALONE(display-robot)
+IF(TEST_WITH_ROMEO)
+  CONFIG_FILES(display-robot.cc)
+  ADD_TESTCASE(display-robot TRUE)
+  KINEO_STANDALONE(display-robot)
+ENDIF()

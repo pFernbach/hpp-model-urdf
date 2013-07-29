@@ -40,9 +40,14 @@ BOOST_AUTO_TEST_CASE (display_robot)
     }
   
   hpp::model::HumanoidRobotShPtr humanoidRobot;
-
-  BOOST_CHECK_EQUAL(hpp::model::urdf::loadRobotModel (humanoidRobot,
-						      "romeo"),
+  std::string robotDataDir;
+  if ("@ROMEO_DESCRIPTION_DATADIR@" == "") {
+    robotDataDir = "@ROMEO_DESCRIPTION_PREFIX@/share/romeo_description";
+  } else {
+    robotDataDir = "@ROMEO_DESCRIPTION_DATADIR@/romeo_description";
+  }
+  BOOST_CHECK_EQUAL(hpp::model::urdf::loadRobotModel
+		    (humanoidRobot, "romeo", robotDataDir, "", "", ""),
 		    true);
 
   std::ofstream log ("./display-robot.log");
