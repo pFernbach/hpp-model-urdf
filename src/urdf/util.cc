@@ -246,7 +246,7 @@ namespace hpp
 	return true;
       }
 
-      void loadTexture(const std::string& resource_path)
+      void loadTexture(const std::string&)
       {
       }
 

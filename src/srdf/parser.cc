@@ -55,14 +55,14 @@ namespace hpp
       Parser::displayDisabledCollisionPairs (std::ostream& os)
       {
 	CollisionPairsType disabledColPairs
-	  = srdfModel_.getDisabledCollisions ();
+	  = srdfModel_.getDisabledCollisionPairs ();
 
 	os << "Disabled collision pairs list size: "
 	   << disabledColPairs.size () << std::endl;
 
 	BOOST_FOREACH (CollisionPairType colPair, disabledColPairs)
 	  {
-	    os << colPair.first << " " << colPair.second << std::endl;
+	    os << colPair.link1_ << " " << colPair.link2_ << std::endl;
 	  }
       }
 
@@ -74,7 +74,7 @@ namespace hpp
 
 	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
 	  {
-	    os << colPair.first << " " << colPair.second << std::endl;
+	    os << colPair.link1_ << " " << colPair.link2_ << std::endl;
 	  }
       }
 
@@ -137,9 +137,10 @@ namespace hpp
 			  body_i->addOuterCapsule (segment, true);
 			body_i->addOuterObject (object, false);
 		      }
-
-		    colPairs_.push_back
-		      (CollisionPairType (bodyName_i, bodyName_j));
+		    CollisionPairType cpt;
+		    cpt.link1_ = bodyName_i;
+		    cpt.link2_ = bodyName_j;
+		    colPairs_.push_back (cpt);
 		  }
 	      }
 	  }
@@ -153,13 +154,13 @@ namespace hpp
       {
 	// Retrieve collision pairs that will NOT be taken into account.
 	CollisionPairsType disabledColPairs
-	  = srdfModel_.getDisabledCollisions ();
+	  = srdfModel_.getDisabledCollisionPairs ();
 
 	// Cycle through disabled collision pairs.
 	BOOST_FOREACH (CollisionPairType disabledColPair, disabledColPairs)
 	  {
-	    std::string disabled1 = disabledColPair.first;
-	    std::string disabled2 = disabledColPair.second;
+	    std::string disabled1 = disabledColPair.link1_;
+	    std::string disabled2 = disabledColPair.link2_;
 
 	    if ((bodyName_1 == disabled1 && bodyName_2 == disabled2)
 		|| (bodyName_1 == disabled2 && bodyName_2 == disabled1))
@@ -176,8 +177,8 @@ namespace hpp
 	// Cycle through added collision pairs.
 	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
 	  {
-	    std::string added1 = colPair.first;
-	    std::string added2 = colPair.second;
+	    std::string added1 = colPair.link1_;
+	    std::string added2 = colPair.link2_;
 
 	    if ((bodyName_1 == added1 && bodyName_2 == added2)
 		|| (bodyName_1 == added2 && bodyName_2 == added1))

@@ -47,7 +47,7 @@ namespace hpp
       class Parser
       {
       public:
-	typedef std::pair<std::string, std::string> CollisionPairType;
+	typedef ::srdf::Model::DisabledCollision CollisionPairType;
 	typedef std::vector<CollisionPairType> CollisionPairsType;
 	typedef std::map<std::string, std::vector<double> > ConfigurationType;
 
