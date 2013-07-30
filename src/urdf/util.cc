@@ -445,7 +445,6 @@ namespace hpp
 	if (!srdfParser.parse (urdfPath, srdfPath, device))
 	  {
 	    hppDout (error, "Could not parse SRDF file.");
-	    return false;
 	  }
 	else {
 	  hppDout (notice, "Finished parsing SRDF file.");
@@ -461,7 +460,6 @@ namespace hpp
 	if (!rcpdfParser.parse (rcpdfPath, device))
 	  {
 	    hppDout (error, "Could not parse RCPDF file.");
-	    return false;
 	  }
 	else {
 	  hppDout (notice, "Finished parsing RCPDF file.");
