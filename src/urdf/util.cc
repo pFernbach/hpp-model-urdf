@@ -423,12 +423,12 @@ namespace hpp
 	hpp::model::srdf::Parser srdfParser;
 	hpp::model::rcpdf::Parser rcpdfParser;
 
-	std::string urdfPath
-	  = robotDataDir + "/urdf/" + modelName + urdfSuffix + ".urdf";
-	std::string srdfPath
-	  = robotDataDir + "/srdf/" + modelName + srdfSuffix + ".srdf";
-	std::string rcpdfPath
-	  = robotDataDir + "/rcpdf/" + modelName + rcpdfSuffix + ".rcpdf";
+	std::string urdfPath = "file://" + robotDataDir + "/urdf/" + modelName +
+	  urdfSuffix + ".urdf";
+	std::string srdfPath = "file://" + robotDataDir + "/srdf/" + modelName +
+	  srdfSuffix + ".srdf";
+	std::string rcpdfPath = "file://" + robotDataDir + "/rcpdf/" +
+	  modelName + rcpdfSuffix + ".rcpdf";
 
 	// Build robot model from URDF.
 	device = urdfParser.parse (urdfPath);
