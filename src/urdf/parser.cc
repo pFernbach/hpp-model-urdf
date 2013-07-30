@@ -556,14 +556,12 @@ namespace hpp
 	    ::urdf::Vector3 scale = visualGeometry->scale;
 
 	    // FIXME: We assume for now that visual and collision
-	    // meshes are the same.
+	    // meshes are the same. Otherwise, use visual mesh as
+	    // reference for now.
 	    if (visualFilename != collisionFilename)
-	      {
-		hppDout (error,
-			 "Unhandled:visual and collision meshes not the same for "
-			 << link->name);
-		return false;
-	      }
+	      hppDout (notice,
+		       "Unhandled:visual and collision meshes not the same for "
+		       << link->name << ". Using visual mesh as reference.");
 
 	    // Create Kite polyhedron component by parsing Collada
 	    // file.
