@@ -32,6 +32,12 @@ SET(PROJECT_URL "No webpage yet...")
 
 SETUP_PROJECT()
 
+# Activate hpp-util logging if requested
+SET (HPP_DEBUG FALSE CACHE BOOL "trigger hpp-util debug output")
+IF (HPP_DEBUG)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHPP_DEBUG")
+ENDIF()
+
 SET(TEST_WITH_ROMEO ON CACHE BOOL
   "Enable test with Romeo model: trigger dependency to romeo package.")
 
