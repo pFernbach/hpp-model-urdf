@@ -38,7 +38,7 @@ IF (HPP_DEBUG)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHPP_DEBUG")
 ENDIF()
 
-SET(TEST_WITH_ROMEO ON CACHE BOOL
+SET(TEST_WITH_ROMEO OFF CACHE BOOL
   "Enable test with Romeo model: trigger dependency to romeo package.")
 
 # Profiling flags when building with DEBUG
