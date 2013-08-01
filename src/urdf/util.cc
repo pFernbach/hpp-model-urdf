@@ -399,6 +399,7 @@ namespace hpp
 	if (!scene)
 	  {
 	    hppDout (error, "Could not load resource " << resource_path);
+	    hppDout (error, importer.GetErrorString ());
 	    return false;
 	  }
 
