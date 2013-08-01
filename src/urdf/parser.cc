@@ -47,6 +47,8 @@
 #include <hpp/model/urdf/parser.hh>
 #include <hpp/model/urdf/util.hh>
 
+#include <assimp/DefaultLogger.h>
+
 namespace hpp
 {
   namespace model
@@ -70,7 +72,15 @@ namespace hpp
 	  leftFootJointName_ (),
 	  rightFootJointName_ (),
 	  gazeJointName_ ()
-      {}
+      {
+#ifdef HPP_DEBUG
+	std::string filename = hpp::debug::getPrefix ("assimp") +
+	  "/assimp.log";
+	hppDout (notice, filename);
+	Assimp::DefaultLogger::create (filename.c_str (),
+				       Assimp::Logger::VERBOSE);
+#endif
+      }
 
       Parser::~Parser ()
       {}
