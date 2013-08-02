@@ -138,6 +138,7 @@ namespace hpp
 	    }
 	  catch (resource_retriever::Exception& e)
 	    {
+	      hppDout (error, e.what ());
 	      return false;
 	    }
 
