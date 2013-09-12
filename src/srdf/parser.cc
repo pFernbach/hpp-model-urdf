@@ -33,6 +33,7 @@
 #include <hpp/util/assertion.hh>
 #include <hpp/util/debug.hh>
 
+#include <hpp/model/urdf/types.hh>
 #include "hpp/model/srdf/parser.hh"
 
 namespace hpp

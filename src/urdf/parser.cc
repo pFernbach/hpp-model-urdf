@@ -28,6 +28,8 @@
 
 #include <resource_retriever/retriever.h>
 
+#include <hpp/model/urdf/types.hh>
+
 #include <KineoModel/kppSMLinearComponent.h>
 #include <KineoModel/kppJointComponent.h>
 #include <KineoModel/kppSolidComponentRef.h>

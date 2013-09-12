@@ -33,6 +33,7 @@
 
 #include <hpp/util/debug.hh>
 
+#include <hpp/model/urdf/types.hh>
 #include "hpp/model/urdf/util.hh"
 
 namespace fs = boost::filesystem;
