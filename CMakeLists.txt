@@ -55,7 +55,7 @@ SEARCH_FOR_BOOST()
 
 # Search for dependecies.
 ADD_REQUIRED_DEPENDENCY("assimp")
-ADD_REQUIRED_DEPENDENCY("KineoController")
+ADD_REQUIRED_DEPENDENCY("KineoController >= 2.07")
 ADD_REQUIRED_DEPENDENCY("hpp-util >= 0.4")
 ADD_REQUIRED_DEPENDENCY("hpp-model >= 2.1")
 ADD_REQUIRED_DEPENDENCY("hpp-geometry >= 1.0.1")
