@@ -34,6 +34,9 @@
 #include <hpp/util/debug.hh>
 
 #include <hpp/model/urdf/types.hh>
+
+#include <hpp/model/capsule-body-distance.hh>
+
 #include "hpp/model/srdf/parser.hh"
 
 namespace hpp
@@ -82,22 +85,15 @@ namespace hpp
       bool
       Parser::addCollisionPairs ()
       {
-	// Retrieve joints.
-	JointPtrsType joints;
-	robot_->getJointVector (joints);
-
-	// Cycle through joints to add collision pairs.
-	BOOST_FOREACH (CkwsJointShPtr joint_i, joints)
+	// Cycle through body distances to add collision pairs.
+	BOOST_FOREACH (BodyDistanceShPtr bodyDistance_i,
+		       robot_->bodyDistances ())
 	  {
-	    BodyPtrType body_i;
-	    body_i = KIT_DYNAMIC_PTR_CAST (BodyType,
-					   joint_i->attachedBody ());
-	    if (!body_i)
-	      continue;
-	    std::string bodyName_i = body_i->name ();
-
+	    BodyPtrType body_i = bodyDistance_i->body ();
+	    std::string bodyName_i = bodyDistance_i->name ();
+	    
 	    // Build distance computation analyses for inner objects.
-	    ObjectPtrsType objects_i = body_i->innerObjects ();
+	    ObjectPtrsType objects_i = body_i->mobileObjects ();
 	    BOOST_FOREACH (CkcdObjectShPtr object_i, objects_i)
 	      {
 		// Treat segment case separately for fast distance
@@ -105,18 +101,23 @@ namespace hpp
 		SegmentPtrType segment_i
 		  = KIT_DYNAMIC_PTR_CAST (SegmentType, object_i);
 		if (segment_i)
-		  body_i->addInnerCapsule (segment_i, true);
-		body_i->addInnerObject (object_i, false);
+		  {
+		    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
+		      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance, bodyDistance_i);
+		    if (!capsuleBodyDistance_i)
+		      hppDout (error, "Static cast failed.");
+		    capsuleBodyDistance_i->addInnerCapsule (segment_i, true);
+		  }
+		bodyDistance_i->addInnerObject (object_i, false);
 	      }
 
-	    BOOST_FOREACH (CkwsJointShPtr joint_j, joints)
+	    BOOST_FOREACH (BodyDistanceShPtr bodyDistance_j,
+			   robot_->bodyDistances ())
 	      {
-		BodyPtrType body_j;
-		body_j = KIT_DYNAMIC_PTR_CAST (BodyType,
-					       joint_j->attachedBody ());
+		BodyPtrType body_j = bodyDistance_j->body ();
 		if (!body_j)
 		  continue;
-		std::string bodyName_j = body_j->name ();
+		std::string bodyName_j = bodyDistance_j->name ();
 
 		// Add collision pair after checking it is not
 		// disabled, and that it has not been already added.
@@ -126,7 +127,7 @@ namespace hpp
 		  {
 		    // Add collision pairs only for bodies that have
 		    // geometric objects attached to them.
-		    ObjectPtrsType objects_j = body_j->innerObjects ();
+		    ObjectPtrsType objects_j = body_j->mobileObjects ();
 		    for (unsigned i = 0; i < objects_j.size (); ++i)
 		      {
 			CkcdObjectShPtr object = objects_j[i];
@@ -135,8 +136,16 @@ namespace hpp
 			SegmentPtrType segment
 			  = KIT_DYNAMIC_PTR_CAST (SegmentType, object);
 			if (segment)
-			  body_i->addOuterCapsule (segment, true);
-			body_i->addOuterObject (object, false);
+			  {
+			    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
+			      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance,
+						     bodyDistance_i);
+			    if (!capsuleBodyDistance_i)
+			      hppDout (error, "Static cast failed.");
+			    capsuleBodyDistance_i->addOuterCapsule (segment,
+								    true);
+			  }
+			bodyDistance_i->addOuterObject (object, false);
 		      }
 		    CollisionPairType cpt;
 		    cpt.link1_ = bodyName_i;

@@ -43,6 +43,7 @@
 #include <hpp/model/freeflyer-joint.hh>
 #include <hpp/model/rotation-joint.hh>
 #include <hpp/model/translation-joint.hh>
+#include <hpp/model/capsule-body-distance.hh>
 
 #include <hpp/geometry/component/capsule.hh>
 
@@ -489,13 +490,6 @@ namespace hpp
 	    // Link dynamic body to dynamic joint.
 	    it->second->jrlJoint ()->setLinkedBody (*jrlBody);
 
-	    // Link geometric body to joint.
-	    // BodyPtrType body = hpp::model::Body::create (childLinkName);
-	    // std::cout << childLinkName << " " << body->innerObjects ().size ()
-	    // 	      << std::endl;
-	    // KIT_DYNAMIC_PTR_CAST(CkwsJoint, it->second)
-	    //   ->setAttachedBody (body);
-
 	    // Create geometric body and fill geometry information.
 	    if (link->visual && link->collision)
 	      {
@@ -507,10 +501,29 @@ namespace hpp
 		    return false;
 		  }
 
-		BodyPtrType body
-		  = KIT_DYNAMIC_PTR_CAST (BodyType,
-					  hppJoint->kppJoint ()->kwsKCDBody ());
-		body->name (childLinkName);
+		// Crete body distance object and add it in device.
+		// If visual geometry is a mesh and collision geometry
+		// is a cylinder, consider the KiteLab collision
+		// geometry to be a capsule and treat case separately.
+		if (link->visual->geometry->type
+		    == ::urdf::Geometry::MESH
+		    && link->collision->geometry->type
+		    == ::urdf::Geometry::CYLINDER)
+		  {
+		    CapsuleBodyDistanceShPtr bodyDistance
+		      = CapsuleBodyDistance::create (hppJoint->kppJoint ()
+						     ->kwsKCDBodyAdvanced (),
+						     childLinkName);
+		    robot_->addBodyDistance (bodyDistance);
+		  }
+		else
+		  {
+		    BodyDistanceShPtr bodyDistance
+		      = BodyDistance::create (hppJoint->kppJoint ()
+					      ->kwsKCDBodyAdvanced (),
+					      childLinkName);
+		    robot_->addBodyDistance (bodyDistance);
+		  }
 	      }
 	  }
 

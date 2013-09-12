@@ -32,7 +32,6 @@
 
 # include <hpp/geometry/component/capsule.hh>
 
-# include <hpp/model/capsule-body.hh>
 # include <hpp/model/humanoid-robot.hh>
 
 namespace hpp
@@ -58,8 +57,8 @@ namespace hpp
 	typedef std::vector<CkcdObjectShPtr> ObjectPtrsType;
 
 	typedef vectorN HppConfigurationType;
-	typedef hpp::model::CapsuleBody BodyType;
-	typedef hpp::model::CapsuleBodyShPtr BodyPtrType;
+	typedef CkwsKCDBodyAdvanced BodyType;
+	typedef CkwsKCDBodyAdvancedShPtr BodyPtrType;
 	typedef hpp::geometry::component::Capsule CapsuleType;
 	typedef hpp::geometry::component::CapsuleShPtr CapsulePtrType;
 	typedef hpp::geometry::component::Segment SegmentType;
