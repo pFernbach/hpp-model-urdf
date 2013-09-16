@@ -30,7 +30,8 @@
 
 #include <hpp/util/debug.hh>
 
-#include <hpp/model/urdf/types.hh>
+#include <hpp/model/types.hh>
+
 #include "hpp/model/rcpdf/parser.hh"
 
 namespace hpp

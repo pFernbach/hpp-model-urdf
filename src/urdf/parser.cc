@@ -28,7 +28,7 @@
 
 #include <resource_retriever/retriever.h>
 
-#include <hpp/model/urdf/types.hh>
+#include <hpp/model/types.hh>
 
 #include <KineoModel/kppSMLinearComponent.h>
 #include <KineoModel/kppJointComponent.h>
