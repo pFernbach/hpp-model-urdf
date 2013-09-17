@@ -418,7 +418,6 @@ namespace hpp
       bool
       loadRobotModel (model::HumanoidRobotShPtr& device,
 		      const std::string& modelName,
-		      const std::string& robotDataDir,
 		      const std::string& urdfSuffix,
 		      const std::string& srdfSuffix,
 		      const std::string& rcpdfSuffix)
@@ -427,12 +426,12 @@ namespace hpp
 	hpp::model::srdf::Parser srdfParser;
 	hpp::model::rcpdf::Parser rcpdfParser;
 
-	std::string urdfPath = "file://" + robotDataDir + "/urdf/" + modelName +
-	  urdfSuffix + ".urdf";
-	std::string srdfPath = "file://" + robotDataDir + "/srdf/" + modelName +
-	  srdfSuffix + ".srdf";
-	std::string rcpdfPath = "file://" + robotDataDir + "/rcpdf/" +
-	  modelName + rcpdfSuffix + ".rcpdf";
+	std::string urdfPath = "package://" + modelName + "_description/urdf/"
+	  + modelName + urdfSuffix + ".urdf";
+	std::string srdfPath = "package://" + modelName + "_description/srdf/"
+	  + modelName + srdfSuffix + ".srdf";
+	std::string rcpdfPath = "package://" + modelName + "_description/rcpdf/"
+	  + modelName + rcpdfSuffix + ".rcpdf";
 
 	// Build robot model from URDF.
 	device = urdfParser.parse (urdfPath);

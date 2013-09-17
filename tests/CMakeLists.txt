@@ -56,7 +56,6 @@ ENDMACRO(ADD_TESTCASE)
 
 # Generated test.
 IF(TEST_WITH_ROMEO)
-  CONFIG_FILES(display-robot.cc)
-  ADD_TESTCASE(display-robot TRUE)
+  ADD_TESTCASE(display-robot FALSE)
   KINEO_STANDALONE(display-robot)
 ENDIF()

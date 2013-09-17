@@ -38,16 +38,10 @@ BOOST_AUTO_TEST_CASE (display_robot)
       std::cout << "Failed to validate Kineo license." << std::endl;
       return;
     }
-  
+
   hpp::model::HumanoidRobotShPtr humanoidRobot;
-  std::string robotDataDir;
-  if ("@ROMEO_DESCRIPTION_DATADIR@" == "") {
-    robotDataDir = "@ROMEO_DESCRIPTION_PREFIX@/share/romeo_description";
-  } else {
-    robotDataDir = "@ROMEO_DESCRIPTION_DATADIR@/romeo_description";
-  }
   BOOST_CHECK_EQUAL(hpp::model::urdf::loadRobotModel
-		    (humanoidRobot, "romeo", robotDataDir, "", "", ""),
+		    (humanoidRobot, "romeo", "", "", ""),
 		    true);
 
   std::ofstream log ("./display-robot.log");
