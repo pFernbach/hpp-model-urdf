@@ -1,3 +1,11 @@
+2013-09-26 Release 0.4
+
+  	1. Port to KiteLab 2.07.
+ 	2. hpp::model::urdf::loadRobotModel does not need the robot
+ 	directory anymore. The user simply needs to make sure the
+ 	robot directory is in the ROS_PACKAGE_PATH environment
+ 	variable.
+
 2013-07-31
 	Modification of hpp::model::urdf::loadRobotModel prototype.
 	An argument has been added to specify the directory where the robot
