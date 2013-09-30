@@ -584,9 +584,11 @@ namespace hpp
 	    // meshes are the same. Otherwise, use visual mesh as
 	    // reference for now.
 	    if (visualFilename != collisionFilename)
-	      hppDout (notice,
-		       "Unhandled:visual and collision meshes not the same for "
-		       << link->name << ". Using visual mesh as reference.");
+	      {
+		hppDout (notice,
+			 "Unhandled:visual and collision meshes not the same for "
+			 << link->name << ". Using visual mesh as reference.");
+	      }
 
 	    // Create Kite polyhedron component by parsing Collada
 	    // file.
