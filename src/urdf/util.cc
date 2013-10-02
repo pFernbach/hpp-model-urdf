@@ -32,6 +32,7 @@
 #include <resource_retriever/retriever.h>
 
 #include <hpp/util/debug.hh>
+#include <hpp/util/assertion.hh>
 
 #include <hpp/model/types.hh>
 
@@ -154,9 +155,10 @@ namespace hpp
 	}
 
 	// ... and finally a method to open a custom stream
-	Assimp::IOStream* Open(const char* file, const char* mode)
+	Assimp::IOStream* Open(const char* file,
+			       const char* hppDebugStatement (mode))
 	{
-	  assert (mode == std::string("r") || mode == std::string("rb"));
+	  HPP_ASSERT (mode == std::string("r") || mode == std::string("rb"));
 
 	  // Ugly -- two retrievals where there should be one (Exists + Open)
 	  // resource_retriever needs a way of checking for existence
