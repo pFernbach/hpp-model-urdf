@@ -154,7 +154,7 @@ namespace hpp
 	}
 
 	// ... and finally a method to open a custom stream
-	Assimp::IOStream* Open(const char* file, const char*)
+	Assimp::IOStream* Open(const char* file, const char* mode)
 	{
 	  assert (mode == std::string("r") || mode == std::string("rb"));
 
