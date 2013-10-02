@@ -104,9 +104,7 @@ namespace hpp
 		    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
 		      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance, bodyDistance_i);
 		    if (!capsuleBodyDistance_i)
-		      {
-			hppDout (error, "Static cast failed.");
-		      }
+		      hppDout (error, "Static cast failed.");
 		    capsuleBodyDistance_i->addInnerCapsule (segment_i, true);
 		  }
 		bodyDistance_i->addInnerObject (object_i, false);
@@ -142,9 +140,7 @@ namespace hpp
 			      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance,
 						     bodyDistance_i);
 			    if (!capsuleBodyDistance_i)
-			      {
-				hppDout (error, "Static cast failed.");
-			      }
+			      hppDout (error, "Static cast failed.");
 			    capsuleBodyDistance_i->addOuterCapsule (segment,
 								    true);
 			  }
