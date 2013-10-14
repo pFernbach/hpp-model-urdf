@@ -330,7 +330,7 @@ namespace hpp
 
 	// Reserve first 6 dofs for free-floating. Their value will be
 	// set later.
-	HppConfigurationType hppConfig (robot_->numberDof ());
+	HppConfigurationType hppConfig (robot_->numberDof (), 0.);
 	unsigned i = 6;
 
 	// Cycle through joint vector and add corresponding dof
