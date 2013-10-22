@@ -446,8 +446,6 @@ namespace hpp
 	  }
 	hppDout (notice, "Finished parsing URDF file.");
 
-	device->isVisible (false);
-
 	// Set Collision Check Pairs
 	if (!srdfParser.parse (urdfPath, srdfPath, device))
 	  {
