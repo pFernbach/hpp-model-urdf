@@ -20,6 +20,8 @@
 ///
 /// \brief Implementation of utility functions.
 
+#include <sstream>
+#include <string>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
@@ -453,6 +455,12 @@ namespace hpp
 	  }
 	else {
 	  hppDout (notice, "Finished parsing SRDF file.");
+#ifdef HPP_DEBUG
+	  std::ostringstream oss;
+	  srdfParser.displayAddedCollisionPairs (oss);
+	  hppDout (info, "Collision pairs:");
+	  hppDout (info, oss.str ());
+#endif
 	}
 
 	// Set robot in a half-sitting configuration;
