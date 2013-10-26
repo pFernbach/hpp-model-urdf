@@ -102,9 +102,9 @@ namespace hpp
 		if (segment_i)
 		  {
 		    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
-		      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance, bodyDistance_i);
-		    if (!capsuleBodyDistance_i)
-		      hppDout (error, "Static cast failed.");
+		      = KIT_DYNAMIC_PTR_CAST (CapsuleBodyDistance,
+					      bodyDistance_i);
+		    assert (capsuleBodyDistance_i);
 		    capsuleBodyDistance_i->addInnerCapsule (segment_i, true);
 		  }
 		bodyDistance_i->addInnerObject (object_i, true);
@@ -137,10 +137,9 @@ namespace hpp
 			if (segment)
 			  {
 			    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
-			      = KIT_STATIC_PTR_CAST (CapsuleBodyDistance,
+			      = KIT_DYNAMIC_PTR_CAST (CapsuleBodyDistance,
 						     bodyDistance_i);
-			    if (!capsuleBodyDistance_i)
-			      hppDout (error, "Static cast failed.");
+			    assert (capsuleBodyDistance_i);
 			    capsuleBodyDistance_i->addOuterCapsule (segment,
 								    true);
 			  }
