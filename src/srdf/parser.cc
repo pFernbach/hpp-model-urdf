@@ -107,7 +107,7 @@ namespace hpp
 		    assert (capsuleBodyDistance_i);
 		    capsuleBodyDistance_i->addInnerCapsule (segment_i, true);
 		  }
-		bodyDistance_i->addInnerObject (object_i, true);
+		bodyDistance_i->addInnerObject (object_i, false);
 	      }
 
 	    BOOST_FOREACH (BodyDistanceShPtr bodyDistance_j,
@@ -143,7 +143,7 @@ namespace hpp
 			    capsuleBodyDistance_i->addOuterCapsule (segment,
 								    true);
 			  }
-			bodyDistance_i->addOuterObject (object, true);
+			bodyDistance_i->addOuterObject (object, false);
 		      }
 		    CollisionPairType cpt;
 		    cpt.link1_ = bodyName_i;
