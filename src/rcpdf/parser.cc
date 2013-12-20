@@ -29,9 +29,6 @@
 #include <resource_retriever/retriever.h>
 
 #include <hpp/util/debug.hh>
-
-#include <hpp/model/types.hh>
-
 #include "hpp/model/rcpdf/parser.hh"
 
 namespace hpp
@@ -96,7 +93,7 @@ namespace hpp
 	  }
 
 	boost::shared_ptr< ::urdf::Box> box
-	   = dynamic_pointer_cast< ::urdf::Box> (geometry);
+	  = boost::dynamic_pointer_cast< ::urdf::Box> (geometry);
 	
 	soleDimensions.first = box->dim.x;
 	soleDimensions.second = box->dim.y;
@@ -104,36 +101,8 @@ namespace hpp
 	return soleDimensions;
       }
 
-      bool
-      Parser::setFeetSize ()
-      {
-	// Get feet in robot.
-	FootPtrType rightFoot = robot_->rightFoot ();
-	FootPtrType leftFoot = robot_->leftFoot ();
-
-	if (!rightFoot) {
-	  hppDout (notice, "No right foot found.");
-	}
-	if (!leftFoot) {
-	  hppDout (notice, "No left foot found.");
-	}
-	
-	// Compute sole sizes from contact points in feet.
-	SoleDimensionsType rightSoleDimensions = computeSoleDimensions (true);
-	SoleDimensionsType leftSoleDimensions = computeSoleDimensions (false);
-
-	// Set sole size in robot feet.
-	rightFoot->setSoleSize (rightSoleDimensions.first,
-				rightSoleDimensions.second);
-	leftFoot->setSoleSize (leftSoleDimensions.first,
-			       leftSoleDimensions.second);
-
-	return true;
-      }
-
-      bool
-      Parser::parse (const std::string& contactsResourceName,
-		     Parser::RobotPtrType& robot)
+      void Parser::parse (const std::string& contactsResourceName,
+			  Parser::RobotPtrType& robot)
       {
 	resource_retriever::Retriever resourceRetriever;
 
@@ -144,12 +113,11 @@ namespace hpp
 	for (unsigned i = 0; i < contactsResource.size; ++i)
 	  contactsDescription[i] = contactsResource.data.get()[i];
 
-	return parseStream (contactsDescription, robot);
+	parseStream (contactsDescription, robot);
       }
 
-      bool
-      Parser::parseStream (const std::string& contactsDescription,
-			   Parser::RobotPtrType& robot)
+      void Parser::parseStream (const std::string& contactsDescription,
+				Parser::RobotPtrType& robot)
       {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
@@ -158,16 +126,11 @@ namespace hpp
 
 	// Parse rcpdf model.
 	rcpdfModel_ = ::rcpdf::parseRCPDF (contactsDescription);
-	if (!rcpdfModel_)
-	  {
-	    hppDout (error, "Failed to open RCPDF file."
-		     << " Is the filename location correct?");
-	    return false;
-	  }
-
-	return setFeetSize ();
+	if (!rcpdfModel_) {
+	  throw std::runtime_error ("Failed to open RCPDF file:\n"
+				    + contactsDescription);
+	}
       }
-
     } // end of namespace rcpdf.
   } // end of namespace model.
 } // end of namespace  hpp.

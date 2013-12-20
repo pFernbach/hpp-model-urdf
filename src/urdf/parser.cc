@@ -22,35 +22,37 @@
  * \brief Implementation of URDF Parser for hpp-model.
  */
 
+//#include <boost/numeric/conversion/bounds.hpp>
+#include <limits>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
 #include <resource_retriever/retriever.h>
-
-#include <hpp/model/types.hh>
-
-#include <KineoModel/kppSMLinearComponent.h>
-#include <KineoModel/kppJointComponent.h>
-#include <KineoModel/kppSolidComponentRef.h>
-#include <KineoKCDModel/kppKCDPolyhedron.h>
-#include <KineoKCDModel/kppKCDCylinder.h>
-#include <KineoKCDModel/kppKCDBox.h>
+#include <assimp/DefaultLogger.h>
+#include <assimp/assimp.hpp>
+#include <assimp/aiScene.h>
+#include <assimp/aiPostProcess.h>
+#include <assimp/IOStream.h>
+#include <assimp/IOSystem.h>
 
 #include <hpp/util/debug.hh>
-
-#include <hpp/model/anchor-joint.hh>
-#include <hpp/model/freeflyer-joint.hh>
-#include <hpp/model/rotation-joint.hh>
-#include <hpp/model/translation-joint.hh>
-#include <hpp/model/capsule-body-distance.hh>
-
-#include <hpp/geometry/component/capsule.hh>
-
+#include <hpp/util/assertion.hh>
+#include <hpp/model/collision-object.hh>
+#include <hpp/model/device.hh>
+#include <hpp/model/fcl-to-eigen.hh>
+#include <hpp/model/joint.hh>
+#include <hpp/model/object-factory.hh>
 #include <hpp/model/urdf/parser.hh>
 #include <hpp/model/urdf/util.hh>
 
-#include <assimp/DefaultLogger.h>
+#include <fcl/collision_object.h>
+#include <fcl/shape/geometric_shapes.h>
+
+namespace fcl {
+  HPP_PREDEF_CLASS (CollisionGeometry);
+}
 
 namespace hpp
 {
@@ -58,23 +60,158 @@ namespace hpp
   {
     namespace urdf
     {
+      class ResourceIOStream : public Assimp::IOStream
+      {
+      public:
+	ResourceIOStream (const resource_retriever::MemoryResource& res)
+	  : res_(res)
+	  , pos_(res.data.get())
+	{}
+
+	~ResourceIOStream()
+	{}
+
+	size_t Read (void* buffer, size_t size, size_t count)
+	{
+	  size_t to_read = size * count;
+	  if (pos_ + to_read > res_.data.get() + res_.size)
+	    {
+	      to_read = res_.size - (pos_ - res_.data.get());
+	    }
+
+	  memcpy(buffer, pos_, to_read);
+	  pos_ += to_read;
+
+	  return to_read;
+	}
+
+	size_t Write (const void*, size_t, size_t) { return 0; }
+
+	aiReturn Seek (size_t offset, aiOrigin origin)
+	{
+	  uint8_t* new_pos = 0;
+	  switch (origin)
+	    {
+	    case aiOrigin_SET:
+	      new_pos = res_.data.get() + offset;
+	      break;
+	    case aiOrigin_CUR:
+	      new_pos = pos_ + offset; // TODO is this right?  can offset really not be negative
+	      break;
+	    case aiOrigin_END:
+	      new_pos = res_.data.get() + res_.size - offset; // TODO is this right?
+	      break;
+	    default:
+	      break;
+	    }
+
+	  if (new_pos < res_.data.get() || new_pos > res_.data.get() + res_.size)
+	    {
+	      return aiReturn_FAILURE;
+	    }
+
+	  pos_ = new_pos;
+	  return aiReturn_SUCCESS;
+	}
+
+	size_t Tell() const
+	{
+	  return pos_ - res_.data.get();
+	}
+
+	size_t FileSize() const
+	{
+	  return res_.size;
+	}
+
+	void Flush() {}
+
+      private:
+	resource_retriever::MemoryResource res_;
+	uint8_t* pos_;
+      };
+
+      class ResourceIOSystem : public Assimp::IOSystem
+      {
+      public:
+	ResourceIOSystem()
+	{
+	}
+
+	~ResourceIOSystem()
+	{
+	}
+
+	// Check whether a specific file exists
+	bool Exists(const char* file) const
+	{
+	  // Ugly -- two retrievals where there should be one (Exists + Open)
+	  // resource_retriever needs a way of checking for existence
+	  // TODO: cache this
+	  resource_retriever::MemoryResource res;
+	  try
+	    {
+	      res = retriever_.get(file);
+	    }
+	  catch (resource_retriever::Exception& e)
+	    {
+	      hppDout (error, e.what ());
+	      return false;
+	    }
+
+	  return true;
+	}
+
+	// Get the path delimiter character we'd like to see
+	char getOsSeparator() const
+	{
+	  return '/';
+	}
+
+	// ... and finally a method to open a custom stream
+	Assimp::IOStream* Open(const char* file,
+			       const char* hppDebugStatement (mode))
+	{
+	  HPP_ASSERT (mode == std::string("r") || mode == std::string("rb"));
+
+	  // Ugly -- two retrievals where there should be one (Exists + Open)
+	  // resource_retriever needs a way of checking for existence
+	  resource_retriever::MemoryResource res;
+	  try
+	    {
+	      res = retriever_.get(file);
+	    }
+	  catch (resource_retriever::Exception& e)
+	    {
+	      return 0;
+	    }
+
+	  return new ResourceIOStream(res);
+	}
+
+	void Close(Assimp::IOStream* stream) { delete stream; }
+
+      private:
+	mutable resource_retriever::Retriever retriever_;
+      };
+
+      using std::numeric_limits;
       Parser::Parser ()
-	: model_ (),
-	  robot_ (),
-	  rootJoint_ (),
-	  jointsMap_ (),
-	  factory_ (),
-	  waistJointName_ (),
-	  chestJointName_ (),
-	  leftWristJointName_ (),
-	  rightWristJointName_ (),
-	  leftHandJointName_ (),
-	  rightHandJointName_ (),
-	  leftAnkleJointName_ (),
-	  rightAnkleJointName_ (),
-	  leftFootJointName_ (),
-	  rightFootJointName_ (),
-	  gazeJointName_ ()
+  : model_ (),
+    robot_ (),
+    rootJoint_ (),
+    jointsMap_ (),
+    waistJointName_ (),
+    chestJointName_ (),
+    leftWristJointName_ (),
+    rightWristJointName_ (),
+    leftHandJointName_ (),
+    rightHandJointName_ (),
+    leftAnkleJointName_ (),
+    rightAnkleJointName_ (),
+    leftFootJointName_ (),
+    rightFootJointName_ (),
+    gazeJointName_ ()
       {
 #ifdef HPP_DEBUG
 	std::string filename = hpp::debug::getPrefix ("assimp") +
@@ -87,67 +224,6 @@ namespace hpp
 
       Parser::~Parser ()
       {}
-
-      void
-      Parser::displayFoot (CjrlFoot *aFoot, std::ostream &os)
-      {
-      	vector3d data;
-
-      	aFoot->getAnklePositionInLocalFrame (data);
-      	os << "Ankle position in local frame: " << data << std::endl;
-
-      	double lFootWidth=0.0, lFootDepth=0.0;
-      	aFoot->getSoleSize (lFootDepth, lFootWidth);
-      	os << "Foot width: " << lFootWidth
-      	   << " foot depth: " << lFootDepth << std::endl;
-      }
-
-      void
-      Parser::displayHand (CjrlHand *aHand, std::ostream &os)
-      {
-      	vector3d data;
-
-      	aHand->getCenter (data);
-      	os << "Center: " << data << std::endl;
-
-      	aHand->getThumbAxis (data);
-      	os << "Thumb axis: " << data << std::endl;
-
-      	aHand->getForeFingerAxis (data);
-      	os << "Showing axis: " << data << std::endl;
-
-      	aHand->getPalmNormal (data);
-      	os << "Palm axis: " << data << std::endl;
-      }
-
-      void
-      Parser::displayEndEffectors (std::ostream &os)
-      {
-      	CjrlHand *aHand;
-      	aHand = robot_->leftHand ();
-      	displayHand(aHand,os);
-      	aHand = robot_->rightHand ();
-      	displayHand (aHand, os);
-
-      	CjrlFoot *aFoot;
-      	aFoot = robot_->leftFoot ();
-      	displayFoot (aFoot, os);
-      	aFoot = robot_->rightFoot ();
-      	displayFoot (aFoot, os);
-      }
-
-      void Parser::displayActuatedJoints (std::ostream &os)
-      {
-      	const vectorN currentConfiguration = robot_->currentConfiguration ();
-      	os << "Actuated joints : " ;
-	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
-	for (unsigned int i = 0; i < actJointsVect.size (); i++)
-      	  {
-      	    unsigned int riC = actJointsVect[i]->rankInConfiguration ();
-      	    os << currentConfiguration[riC] << " ";
-      	  }
-      	os << std::endl;
-      }
 
       namespace
       {
@@ -162,27 +238,24 @@ namespace hpp
 	/// We use Gram-Schmidt process to compute the rotation matrix.
 	///
 	/// [1] http://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
-	CkitMat4
+	Parser::MatrixHomogeneousType
 	normalizeFrameOrientation (Parser::UrdfJointConstPtrType urdfJoint)
 	{
-	  if (!urdfJoint)
-	    {
-	      hppDout (error, "Null pointer in normalizeFrameOrientation");
-	      CkitMat4 result;
-	      result.identity ();
-	      return result;
-	    }
+	  if (!urdfJoint) {
+	    throw std::runtime_error
+	      ("Null pointer in normalizeFrameOrientation");
+	  }
 
-	  CkitMat4 result;
-	  result.identity ();
+	  Parser::MatrixHomogeneousType result;
+	  result.setIdentity ();
 
-	  vector3d x (urdfJoint->axis.x,
-		      urdfJoint->axis.y,
-		      urdfJoint->axis.z);
+	  vector3_t x (urdfJoint->axis.x,
+		       urdfJoint->axis.y,
+		       urdfJoint->axis.z);
 	  x.normalize ();
 
-	  vector3d y (0., 0., 0.);
-	  vector3d z (0., 0., 0.);
+	  vector3_t y (0., 0., 0.);
+	  vector3_t z (0., 0., 0.);
 
 	  unsigned smallestComponent = 0;
 	  for (unsigned i = 0; i < 3; ++i)
@@ -190,17 +263,18 @@ namespace hpp
 	      smallestComponent = i;
 
 	  y[smallestComponent] = 1.;
-	  z = x ^ y;
-	  y = z ^ x;
+	  z = x.cross (y);
+	  y = z.cross (x);
 	  // (x, y, z) is an orthonormal basis.
 
+	  fcl::Matrix3f R;
 	  for (unsigned i = 0; i < 3; ++i)
 	    {
-	      result (i, 0) = x[i];
-	      result (i, 1) = y[i];
-	      result (i, 2) = z[i];
+	      R (i, 0) = x[i];
+	      R (i, 1) = y[i];
+	      R (i, 2) = z[i];
 	    }
-
+	  result.setRotation (R);
 	  return result;
 	}
       } // end of anonymous namespace.
@@ -221,7 +295,7 @@ namespace hpp
       void
       Parser::findSpecialJoints ()
       {
-	waistJointName_ = "base_joint";
+	waistJointName_ = "base_joint_x";
 	findSpecialJoint ("torso", chestJointName_);
 	findSpecialJoint ("l_wrist", leftWristJointName_);
 	findSpecialJoint ("r_wrist", rightWristJointName_);
@@ -238,623 +312,415 @@ namespace hpp
       void
       Parser::setSpecialJoints ()
       {
-	if (!findJoint (waistJointName_))
+	try {
+	  robot_->waist (findJoint (waistJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No waist joint found");
-	else
-	  robot_->waist (findJoint (waistJointName_)->jrlJoint ());
-	if (!findJoint (chestJointName_))
+	}
+	try {
+	  robot_->chest (findJoint (chestJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No chest joint found");
-	else
-	  robot_->chest (findJoint (chestJointName_)->jrlJoint ());
-	if (!findJoint (leftWristJointName_))
+	}
+	try {
+	  robot_->leftWrist (findJoint (leftWristJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No left wrist joint found");
-	else
-	  robot_->leftWrist (findJoint (leftWristJointName_)->jrlJoint ());
-	if (!findJoint (rightWristJointName_))
+	}
+	try {
+	  robot_->rightWrist (findJoint (rightWristJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No right wrist joint found");
-	else
-	  robot_->rightWrist (findJoint (rightWristJointName_)->jrlJoint ());
-	if (!findJoint (leftAnkleJointName_))
+	}
+	try {
+	  robot_->leftAnkle (findJoint (leftAnkleJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No left ankle joint found");
-	else
-	  robot_->leftAnkle (findJoint (leftAnkleJointName_)->jrlJoint ());
-	if (!findJoint (rightAnkleJointName_))
+	}
+	try {
+	  robot_->rightAnkle (findJoint (rightAnkleJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No right ankle joint found");
-	else
-	  robot_->rightAnkle (findJoint (rightAnkleJointName_)->jrlJoint ());
-	if (!findJoint (gazeJointName_))
+	}
+	try {
+	  robot_->gazeJoint (findJoint (gazeJointName_));
+	} catch (const std::exception&) {
 	  hppDout (notice, "No gaze joint found");
-	else
-	  robot_->gazeJoint (findJoint (gazeJointName_)->jrlJoint ());
+	}
       }
 
-      bool
-      Parser::parseJoints ()
+      void Parser::parseJoints ()
       {
 	// Create free floating joint.
 	// FIXME: position set to identity for now.
-	CkitMat4 position;
-	position.identity ();
-	rootJoint_ = createFreeflyerJoint ("base_joint", position);
-	if (!rootJoint_)
-	  {
-	    hppDout (error, "Failed to create root joint (free flyer)");
-	    return false;
-	  }
-	
-	robot_->setRootJoint(rootJoint_);
+	MatrixHomogeneousType position;
+	position.setIdentity ();
+	createFreeflyerJoint ("base_joint", position, robot_);
 
-	// Iterate through each "true cinematic" joint and create a
-	// corresponding CjrlJoint.
+	// Iterate through each "true kinematic" joint and create a
+	// corresponding hpp::model::Joint.
 	for(MapJointType::const_iterator it = model_.joints_.begin();
-	    it != model_.joints_.end(); ++it)
-	  {
-	    position =
-	      getPoseInReferenceFrame("base_footprint_joint", it->first);
+	    it != model_.joints_.end(); ++it) {
+	  position =
+	    getPoseInReferenceFrame("base_footprint_joint", it->first);
 
-	    // Normalize orientation if this is an actuated joint.
-	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
-	    if (joint->type == ::urdf::Joint::REVOLUTE
-		|| joint->type == ::urdf::Joint::CONTINUOUS
-		|| joint->type == ::urdf::Joint::PRISMATIC)
-	      position = position * normalizeFrameOrientation (joint);
+	  // Normalize orientation if this is an actuated joint.
+	  UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	  if (joint->type == ::urdf::Joint::REVOLUTE
+	      || joint->type == ::urdf::Joint::CONTINUOUS
+	      || joint->type == ::urdf::Joint::PRISMATIC)
+	    position = position * normalizeFrameOrientation (joint);
 
-	    switch(it->second->type)
-	      {
-	      case ::urdf::Joint::UNKNOWN:
-		hppDout (error, "Parsed joint has UNKNOWN type,"
-			 << " this should not happen");
-		return false;
-		break;
-	      case ::urdf::Joint::REVOLUTE:
-		createRotationJoint (it->first, position, it->second->limits);
-		break;
-	      case ::urdf::Joint::CONTINUOUS:
-		createContinuousJoint (it->first, position);
-		break;
-	      case ::urdf::Joint::PRISMATIC:
-		createTranslationJoint (it->first, position,
-					it->second->limits);
-		break;
-	      case ::urdf::Joint::FLOATING:
-		createFreeflyerJoint (it->first, position);
-		break;
-	      case ::urdf::Joint::PLANAR:
-		hppDout (error, "PLANAR joints are not supported");
-		return false;
-		break;
-	      case ::urdf::Joint::FIXED:
-		createAnchorJoint (it->first, position);
-		break;
-	      default:
-		hppDout (error, "Unknown joint type " << (int)it->second->type
-			 << ": should never happen");
-		return false;
-	      }
+	  switch(it->second->type) {
+	  case ::urdf::Joint::UNKNOWN:
+	    throw std::runtime_error ("Joint has UNKNOWN type");
+	    break;
+	  case ::urdf::Joint::REVOLUTE:
+	    createRotationJoint (it->first, position, it->second->limits);
+	    break;
+	  case ::urdf::Joint::CONTINUOUS:
+	    createContinuousJoint (it->first, position);
+	    break;
+	  case ::urdf::Joint::PRISMATIC:
+	    createTranslationJoint (it->first, position,
+				    it->second->limits);
+	    break;
+	  case ::urdf::Joint::FLOATING:
+	    createFreeflyerJoint (it->first, position);
+	    break;
+	  case ::urdf::Joint::PLANAR:
+	    throw std::runtime_error ("PLANAR joints are not supported");
+	    break;
+	  case ::urdf::Joint::FIXED:
+	    createAnchorJoint (it->first, position);
+	    break;
+	  default:
+	    std::ostringstream error;
+	    error << "Unknown joint type: " << (int)it->second->type;
+	    throw std::runtime_error (error.str ());
 	  }
-	
-	return true;
+	}
       }
 
-      std::vector<CjrlJoint*> Parser::actuatedJoints ()
-      {
-	std::vector<CjrlJoint*> jointsVect;
-
-	typedef std::map<std::string, boost::shared_ptr< ::urdf::Joint > >
-	  jointMap_t;
-
-        for(jointMap_t::const_iterator it = model_.joints_.begin ();
-	    it != model_.joints_.end (); ++it)
-	  {
-	    if (!it->second)
-	      throw std::runtime_error ("null joint shared pointer");
-	    if (it->second->type == ::urdf::Joint::UNKNOWN
-		|| it->second->type == ::urdf::Joint::FLOATING
-		|| it->second->type == ::urdf::Joint::FIXED)
-	      continue;
-	    MapHppJointType::const_iterator child = jointsMap_.find (it->first);
-	    if (child == jointsMap_.end () || !child->second)
-	      throw std::runtime_error ("failed to compute actuated joints");
-
-	    // The joints already exists in the vector, do not add it twice.
-	    if (std::find (jointsVect.begin (),
-			   jointsVect.end (),
-			   child->second->jrlJoint ()) != jointsVect.end ())
-	      continue;
-	    jointsVect.push_back (child->second->jrlJoint ());
-	  }
-	return jointsVect;
-      }
-
-      bool
-      Parser::connectJoints (const Parser::JointPtrType& rootJoint)
+      void Parser::connectJoints (const JointPtr_t& rootJoint)
       {
 	BOOST_FOREACH (const std::string& childName,
-		       getChildrenJoint (rootJoint->kppJoint ()->name ()))
-	  {
-	    MapHppJointType::const_iterator child = jointsMap_.find (childName);
-	    if (child == jointsMap_.end () && !!child->second)
-	      {
-		hppDout (error, "Failed to connect joint " << childName);
-		return false;
-	      }
-	    rootJoint->addChildJoint (child->second);
-	    connectJoints (child->second);
+		       getChildrenJoint (rootJoint->name ())) {
+	  MapHppJointType::const_iterator child = jointsMap_.find (childName);
+	  if (child == jointsMap_.end () && !!child->second) {
+	    throw std::runtime_error ("Failed to connect joint " + childName);
 	  }
-
-	return true;
+	  if (!child->second->parentJoint()) {
+	    rootJoint->addChildJoint (child->second);
+	  }
+	  connectJoints (child->second);
+	}
       }
 
-      bool
-      Parser::addBodiesToJoints ()
+      void Parser::addBodiesToJoints ()
       {
         for(MapHppJointType::const_iterator it = jointsMap_.begin();
-	    it != jointsMap_.end(); ++it)
-	  {
-	    // Retrieve associated URDF joint.
-	    UrdfJointConstPtrType joint = model_.getJoint (it->first);
-	    if (!joint && it->first != "base_joint")
-	      continue;
+	    it != jointsMap_.end(); ++it) {
+	  // Retrieve associated URDF joint.
+	  UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	  if (!joint && it->first != "base_joint")
+	    continue;
 
-	    // Retrieve joint name.
-	    std::string childLinkName;
-	    if (it->first == "base_joint")
-	      childLinkName = "base_link";
-	    else
-	      childLinkName = joint->child_link_name;
+	  // Retrieve joint name.
+	  std::string childLinkName;
+	  if (it->first == "base_joint")
+	    childLinkName = "base_link";
+	  else
+	    childLinkName = joint->child_link_name;
 
-	    // Get child link.
-	    UrdfLinkConstPtrType link = model_.getLink (childLinkName);
-	    if (!link)
-	      {
-		hppDout (error, "Link " << childLinkName
-			 << " not found, inconsistent model");
-		return false;
-	      }
-
-	    // Retrieve inertial information.
-	    boost::shared_ptr< ::urdf::Inertial> inertial =
-	      link->inertial;
-
-	    vector3d localCom (0., 0., 0.);
-	    matrix3d inertiaMatrix;
-	    double mass = 0.;
-	    if (inertial)
-	      {
-		localCom[0] = inertial->origin.position.x;
-		localCom[1] = inertial->origin.position.y;
-		localCom[2] = inertial->origin.position.z;
-
-		mass = inertial->mass;
-
-		inertiaMatrix (0, 0) = inertial->ixx;
-		inertiaMatrix (0, 1) = inertial->ixy;
-		inertiaMatrix (0, 2) = inertial->ixz;
-
-		inertiaMatrix (1, 0) = inertial->ixy;
-		inertiaMatrix (1, 1) = inertial->iyy;
-		inertiaMatrix (1, 2) = inertial->iyz;
-
-		inertiaMatrix (2, 0) = inertial->ixz;
-		inertiaMatrix (2, 1) = inertial->iyz;
-		inertiaMatrix (2, 2) = inertial->izz;
-
-		// Use joint normalization to properly reorient
-		// inertial frames.
-		if (it->first == "base_joint")
-		  {}
-		else
-		  if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
-		      || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
-		      || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
-		  {
-		    CkitMat4 normalizedJointTransform
-		      = normalizeFrameOrientation (link->parent_joint);
-
-		    CkitMat4 localComTransform;
-		    localComTransform.identity ();
-		    localComTransform(0, 3) = localCom[0];
-		    localComTransform(1, 3) = localCom[1];
-		    localComTransform(2, 3) = localCom[2];
-		    localComTransform = normalizedJointTransform.inverse ()
-		      * localComTransform;
-		    localCom[0] = localComTransform(0,3);
-		    localCom[1] = localComTransform(1,3);
-		    localCom[2] = localComTransform(2,3);
-
-		    CkitMat4 inertiaMatrixTransform;
-		    inertiaMatrixTransform.identity ();
-		    for (unsigned i = 0; i < 3; ++i)
-		      for (unsigned j = 0; j < 3; ++j)
-			inertiaMatrixTransform(i, j) = inertiaMatrix(i, j);
-		    inertiaMatrixTransform
-		      = normalizedJointTransform.inverse ()
-		      * inertiaMatrixTransform
-		      * normalizedJointTransform;
-		    for (unsigned i = 0; i < 3; ++i)
-		      for (unsigned j = 0; j < 3; ++j)
-			inertiaMatrix(i, j) = inertiaMatrixTransform(i, j);
-		  }
-	      }
-	    else {
-	      hppDout (notice, "missing inertial information in link "
-		       << childLinkName);
-	    }
-
-	    // Create dynamic body and fill inertial information.
-	    CjrlBody* jrlBody = factory_.createBody ();
-	    jrlBody->mass (mass);
-	    jrlBody->localCenterOfMass (localCom);
-	    jrlBody->inertiaMatrix (inertiaMatrix);
-
-	    // Link dynamic body to dynamic joint.
-	    it->second->jrlJoint ()->setLinkedBody (*jrlBody);
-
-	    // Create geometric body and fill geometry information.
-	    if (link->visual && link->collision)
-	      {
-		JointPtrType hppJoint
-		  = KIT_DYNAMIC_PTR_CAST (JointType, it->second);
-		if (!addSolidComponentToJoint (link, hppJoint))
-		  {
-		    hppDout (error, "Could not add solid component to joint.");
-		    return false;
-		  }
-
-		// Crete body distance object and add it in device.
-		// If visual geometry is a mesh and collision geometry
-		// is a cylinder, consider the KiteLab collision
-		// geometry to be a capsule and treat case separately.
-		if (link->visual->geometry->type
-		    == ::urdf::Geometry::MESH
-		    && link->collision->geometry->type
-		    == ::urdf::Geometry::CYLINDER)
-		  {
-		    CapsuleBodyDistanceShPtr bodyDistance
-		      = CapsuleBodyDistance::create (hppJoint->kppJoint ()
-						     ->kwsKCDBodyAdvanced (),
-						     childLinkName);
-		    robot_->addBodyDistance (bodyDistance);
-		  }
-		else
-		  {
-		    BodyDistanceShPtr bodyDistance
-		      = BodyDistance::create (hppJoint->kppJoint ()
-					      ->kwsKCDBodyAdvanced (),
-					      childLinkName);
-		    robot_->addBodyDistance (bodyDistance);
-		  }
-	      }
+	  // Get child link.
+	  UrdfLinkConstPtrType link = model_.getLink (childLinkName);
+	  if (!link) {
+	    throw std::runtime_error (std::string ("Link ") + childLinkName +
+				      std::string
+				      (" not found, inconsistent model"));
 	  }
 
-	return true;
+	  // Retrieve inertial information.
+	  boost::shared_ptr < ::urdf::Inertial> inertial = link->inertial;
+
+	  fcl::Vec3f localCom (0., 0., 0.);
+	  matrix3_t inertiaMatrix;
+	  double mass = 0.;
+	  if (inertial) {
+	    localCom[0] = inertial->origin.position.x;
+	    localCom[1] = inertial->origin.position.y;
+	    localCom[2] = inertial->origin.position.z;
+
+	    mass = inertial->mass;
+
+	    inertiaMatrix (0, 0) = inertial->ixx;
+	    inertiaMatrix (0, 1) = inertial->ixy;
+	    inertiaMatrix (0, 2) = inertial->ixz;
+
+	    inertiaMatrix (1, 0) = inertial->ixy;
+	    inertiaMatrix (1, 1) = inertial->iyy;
+	    inertiaMatrix (1, 2) = inertial->iyz;
+
+	    inertiaMatrix (2, 0) = inertial->ixz;
+	    inertiaMatrix (2, 1) = inertial->iyz;
+	    inertiaMatrix (2, 2) = inertial->izz;
+
+	    // Use joint normalization to properly reorient
+	    // inertial frames.
+	    if (it->first == "base_joint") {}
+	    else
+	      if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+		  || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+		  || link->parent_joint->type == ::urdf::Joint::PRISMATIC) {
+		MatrixHomogeneousType normalizedJointTransform
+		  = normalizeFrameOrientation (link->parent_joint);
+
+		MatrixHomogeneousType localComTransform;
+		localComTransform.setIdentity ();
+		localComTransform.setTranslation (localCom);
+		MatrixHomogeneousType njtInverse =
+		  normalizedJointTransform.inverse ();
+		localComTransform = njtInverse * localComTransform;
+		localCom = localComTransform.getTranslation ();
+
+		fcl::Matrix3f R = normalizedJointTransform.getRotation ();
+		fcl::Matrix3f RT = njtInverse.getRotation ();
+		inertiaMatrix = RT * inertiaMatrix * R;
+	      }
+	  }
+	  else {
+	    hppDout (notice, "missing inertial information in link "
+		     << childLinkName);
+	  }
+
+	  // Create dynamic body and fill inertial information.
+	  Body* body = objectFactory_.createBody ();
+	  assert (body);
+	  body->name (link->name);
+	  hppDout (info, "creating Body with name " << body->name ()
+		   << " at " << body);
+
+	  body->mass (mass);
+	  body->localCenterOfMass (localCom);
+	  body->inertiaMatrix (inertiaMatrix);
+
+	  // Link dynamic body to dynamic joint.
+	  it->second->setLinkedBody (body);
+	  hppDout (info,  "Linking body " << body->name () << " to joint "
+		   << it->second->name ());
+
+	  // Create geometric body and fill geometry information.
+	  if (link->collision) {
+	    JointPtr_t hppJoint = it->second;
+	    addSolidComponentToJoint (link, hppJoint);
+	  }
+	}
       }
 
-      CkitMat4
+      Parser::MatrixHomogeneousType
       Parser::computeBodyAbsolutePosition
       (const Parser::UrdfLinkConstPtrType& link, const ::urdf::Pose& pose)
       {
-	CkitMat4 linkPositionInParentJoint = poseToMatrix (pose);
+	MatrixHomogeneousType linkPositionInParentJoint = poseToMatrix (pose);
 
-	CkitMat4 parentJointInWorld;
-	if (link->name == "base_link")
-	  parentJointInWorld = findJoint ("base_joint")->kppJoint ()
-	    ->kwsJoint ()->currentPosition ();
-	else
-	  parentJointInWorld = findJoint (link->parent_joint->name)->kppJoint ()
-	    ->kwsJoint ()->currentPosition ();
-
+	MatrixHomogeneousType parentJointInWorld;
+	if (link->name == "base_link") {
+	  parentJointInWorld =
+	    findJoint ("base_joint")->currentTransformation ();
+	}
+	else {
+	  parentJointInWorld =
+	    findJoint (link->parent_joint->name)->currentTransformation ();
+	}
 	// Denormalize orientation if this is an actuated joint.
 	if (link->name == "base_link")
 	  {}
 	else
-	if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
-	    || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
-	    || link->parent_joint->type == ::urdf::Joint::PRISMATIC)
-	  parentJointInWorld = parentJointInWorld
-	    * normalizeFrameOrientation (link->parent_joint).inverse ();
+	  if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+	      || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+	      || link->parent_joint->type == ::urdf::Joint::PRISMATIC) {
+	    MatrixHomogeneousType inverse =
+	      normalizeFrameOrientation (link->parent_joint).inverse ();
+	    parentJointInWorld = parentJointInWorld * inverse;
+	  }
 
-	CkitMat4 position = parentJointInWorld * linkPositionInParentJoint;
+	MatrixHomogeneousType position = parentJointInWorld *
+	  linkPositionInParentJoint;
 	return position;
       }
 
-      bool
-      Parser::addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
-					const JointPtrType& joint)
+      void Parser::buildMesh (const ::urdf::Vector3& scale,
+			      const aiScene* scene,
+			      const aiNode* node,
+			      std::vector<unsigned>& subMeshIndexes,
+			      const Parser::PolyhedronPtrType& mesh)
       {
-	boost::shared_ptr< ::urdf::Visual> visual =
-	  link->visual;
-	boost::shared_ptr< ::urdf::Collision> collision =
-	  link->collision;
+	if (!node) return;
 
-	// Handle the case where visual geometry is a mesh and
-	// collision geometry is a mesh.
-	if (visual->geometry->type == ::urdf::Geometry::MESH
-	    && collision->geometry->type == ::urdf::Geometry::MESH)
+	aiMatrix4x4 transform = node->mTransformation;
+	aiNode *pnode = node->mParent;
+	while (pnode)
 	  {
-	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
-	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
-	    boost::shared_ptr< ::urdf::Mesh> collisionGeometry
-	      = dynamic_pointer_cast< ::urdf::Mesh> (collision->geometry);
-	    std::string visualFilename = visualGeometry->filename;
-	    std::string collisionFilename = collisionGeometry->filename;
-	    ::urdf::Vector3 scale = visualGeometry->scale;
-
-	    // FIXME: We assume for now that visual and collision
-	    // meshes are the same. Otherwise, use visual mesh as
-	    // reference for now.
-	    if (visualFilename != collisionFilename)
-	      hppDout (notice,
-		       "Unhandled:visual and collision meshes not the same for "
-		       << link->name << ". Using visual mesh as reference.");
-
-	    // Create Kite polyhedron component by parsing Collada
-	    // file.
-	    CkppKCDPolyhedronShPtr polyhedron
-	      = CkppKCDPolyhedron::create (link->name);
-	    if (!loadPolyhedronFromResource (visualFilename, scale, polyhedron))
-	      {
-		hppDout (error,
-			 "Could not load polyhedron from resource for "
-			 << link->name);
-		return false;
-	      }
-	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
-
-	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link,
-							     visual->origin);
-	    polyhedron->setAbsolutePosition (position);
-
-	    // Add solid component.
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (polyhedron));
+	    // Don't convert to y-up orientation, which is what the root node in
+	    // Assimp does
+	    if (pnode->mParent != NULL)
+	      transform = pnode->mTransformation * transform;
+	    pnode = pnode->mParent;
 	  }
 
-	// Handle the case where visual geometry is a cylinder and
-	// collision geometry is a cylinder.
-	if (visual->geometry->type == ::urdf::Geometry::CYLINDER
-	    && collision->geometry->type == ::urdf::Geometry::CYLINDER)
-	  {
-	    boost::shared_ptr< ::urdf::Cylinder> visualGeometry
-	      = dynamic_pointer_cast< ::urdf::Cylinder> (visual->geometry);
-	    boost::shared_ptr< ::urdf::Cylinder> collisionGeometry
-	      = dynamic_pointer_cast< ::urdf::Cylinder> (collision->geometry);
+	for (uint32_t i = 0; i < node->mNumMeshes; i++) {
+	  aiMesh* input_mesh = scene->mMeshes[node->mMeshes[i]];
 
-	    // FIXME: check whether visual and collision cylinder are the same.
-	    double length = visualGeometry->length;
-	    double radius = visualGeometry->radius;
+	  unsigned oldNbPoints = mesh->num_vertices;
+	  unsigned oldNbTriangles = mesh->num_tris;
 
-	    // Create Kite cylinder component.
-	    CkppKCDCylinderShPtr cylinder
-	      = CkppKCDCylinder::create (link->name, radius, radius, length,
-					 32, true, true);
-	    cylinder->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
-
-	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link,
-							     visual->origin);
-
-	    // Apply additional transformation as cylinders in Kite
-	    // are oriented along the x axis, while cylinders in urdf
-	    // are oriented along the z axis.
-	    CkitMat4 zTox;
-	    zTox.rotateY (M_PI / 2);
-	    position = position * zTox;
-	    cylinder->setAbsolutePosition (position);
-
-	    // Add solid component.
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (cylinder));
+	  // Add the vertices
+	  for (uint32_t j = 0; j < input_mesh->mNumVertices; j++) {
+	    aiVector3D p = input_mesh->mVertices[j];
+	    p *= transform;
+	    vertices_.push_back (fcl::Vec3f (p.x * scale.x,
+					     p.y * scale.y,
+					     p.z * scale.z));
 	  }
 
-	// Handle the case where visual geometry is a box and
-	// collision geometry is a box.
-	if (visual->geometry->type == ::urdf::Geometry::BOX
-	    && collision->geometry->type == ::urdf::Geometry::BOX)
-	  {
-	    boost::shared_ptr< ::urdf::Box> visualGeometry
-	      = dynamic_pointer_cast< ::urdf::Box> (visual->geometry);
-	    boost::shared_ptr< ::urdf::Box> collisionGeometry
-	      = dynamic_pointer_cast< ::urdf::Box> (collision->geometry);
-
-	    // FIXME: check whether visual and collision boxes are the same.
-	    double x = visualGeometry->dim.x;
-	    double y = visualGeometry->dim.y;
-	    double z = visualGeometry->dim.z;
-
-	    // Create Kite box component.
-	    CkppKCDBoxShPtr box
-	      = CkppKCDBox::create (link->name, x, y, z);
-	    box->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
-
-	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link,
-							     visual->origin);
-	    box->setAbsolutePosition (position);
-
-	    // Add solid component.
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (box));
+	  // add the indices
+	  for (uint32_t j = 0; j < input_mesh->mNumFaces; j++) {
+	    aiFace& face = input_mesh->mFaces[j];
+	    // FIXME: can add only triangular faces.
+	    triangles_.push_back (fcl::Triangle
+				  (oldNbPoints + face.mIndices[0],
+				   oldNbPoints + face.mIndices[1],
+				   oldNbPoints + face.mIndices[2]));
 	  }
 
-	// Handle the case where visual geometry is a mesh and
-	// collision geometry is a cylinder. In this case the
-	// collision geometry KiteLab is considered to be a capsule.
-	if (visual->geometry->type == ::urdf::Geometry::MESH
-	    && collision->geometry->type == ::urdf::Geometry::CYLINDER)
-	  {
-	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
-	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
-	    boost::shared_ptr< ::urdf::Cylinder> collisionGeometry
-	      = dynamic_pointer_cast< ::urdf::Cylinder> (collision->geometry);
+	  // Save submesh triangles indexes interval.
+	  if (subMeshIndexes.size () == 0)
+	    subMeshIndexes.push_back (0);
 
-	    double length = collisionGeometry->length;
-	    double radius = collisionGeometry->radius;
-
-	    // Create capsule component.
-	    using namespace hpp::geometry::component;
-	    CapsuleShPtr capsule
-	      = Capsule::create (link->name, length, radius);
-	    capsule->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
-
-	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link,
-							     collision->origin);
-
-	    // Apply additional transformation as capsules
-	    // are oriented along the x axis, while cylinders in urdf
-	    // are oriented along the z axis.
-	    CkitMat4 zTox;
-	    zTox.rotateY (M_PI / 2);
-	    position = position * zTox;
-	    capsule->setAbsolutePosition (position);
-
-	    // Create a segment that is equivalent to the
-	    // capsule. This segment can be used for fast distance
-	    // computation between two robot bodies.
-	    CkcdPoint endPoint1, endPoint2;
-	    kcdReal segmentRadius;
-	    capsule->getCapsule (0, endPoint1, endPoint2,
-				 segmentRadius);
-	    std::string segmentName = capsule->name ();
-	    segmentName.append ("-segment");
-	    SegmentShPtr segment
-	      = Segment::create (segmentName,
-				     endPoint1,
-				     endPoint2,
-				     radius);
-	    segment->makeCollisionEntity
-	      (CkcdObject::IMMEDIATE_BUILD);
-	    segment->setAbsolutePosition (position);
-
-	    // Add solid component.
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (capsule));
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (segment));
-	  }
-
-	// Handle the case where visual geometry is a mesh and
-	// collision geometry is a box. In this case the collision
-	// geometry KiteLab is considered to be also a mesh.
-	if (visual->geometry->type == ::urdf::Geometry::MESH
-	    && collision->geometry->type == ::urdf::Geometry::BOX)
-	  {
-	    boost::shared_ptr< ::urdf::Mesh> visualGeometry
-	      = dynamic_pointer_cast< ::urdf::Mesh> (visual->geometry);
-	    std::string visualFilename = visualGeometry->filename;
-	    ::urdf::Vector3 scale = visualGeometry->scale;
-
-	    // Create Kite polyhedron component by parsing Collada
-	    // file.
-	    CkppKCDPolyhedronShPtr polyhedron
-	      = CkppKCDPolyhedron::create (link->name);
-	    loadPolyhedronFromResource (visualFilename, scale, polyhedron);
-	    polyhedron->makeCollisionEntity (CkcdObject::IMMEDIATE_BUILD);
-
-	    // Compute body position in world frame.
-	    CkitMat4 position = computeBodyAbsolutePosition (link,
-							     visual->origin);
-	    polyhedron->setAbsolutePosition (position);
-
-	    // Add solid component.
-	    joint->kppJoint ()->addSolidComponentRef
-	      (CkppSolidComponentRef::create (polyhedron));
-	  }
-
-	return true;
-      }
-
-      void
-      Parser::setFreeFlyerBounds ()
-      {
-      	CjrlJoint * jrlRootJoint = robot_->getRootJoint ()->jrlJoint ();
-      	hpp::model::JointShPtr hppRootJoint = robot_->getRootJoint ();
-
-      	/* Translations */
-      	for(unsigned int i = 0; i < 3; i++) {
-      	  jrlRootJoint->lowerBound (i,
-      				    - std::numeric_limits<double>::infinity ());
-      	  jrlRootJoint->upperBound (i,
-      				    std::numeric_limits<double>::infinity ());
-      	}
-      	/* Rx, Ry */
-      	for(unsigned int i = 3; i < 5; i++){
-      	  hppRootJoint->isBounded (i, true);
-      	  hppRootJoint->lowerBound (i, -M_PI/6);
-      	  hppRootJoint->upperBound (i, M_PI/6);
-      	}
-      	/* Rz */
-      	jrlRootJoint->lowerBound (5, -std::numeric_limits<double>::infinity ());
-      	jrlRootJoint->upperBound (5, std::numeric_limits<double>::infinity ());
-      }
-
-      namespace
-      {
-	vector3d
-	vector4dTo3d (vector4d v)
-	{
-	  return vector3d (v[0], v[1], v[2]);
+	  subMeshIndexes.push_back (oldNbTriangles + input_mesh->mNumFaces);
 	}
 
-	void
-	matrix4dToRT (const matrix4d M, matrix3d& R, vector3d& v)
-	{
-	  for (unsigned i = 0; i < 3; ++i)
-	    {
-	      for (unsigned j = 0; j < 3; ++j)
-		R(i, j) = M(i, j);
-	      v[i] = M(i, 3);
-	    }
+	for (uint32_t i=0; i < node->mNumChildren; ++i) {
+	  buildMesh(scale, scene, node->mChildren[i], subMeshIndexes, mesh);
 	}
-
-	void
-	matrix3dToColumns (const matrix3d R,
-			   vector3d& v0, vector3d& v1, vector3d& v2)
-	{
-	  for (unsigned i = 0; i < 3; ++i)
-	    {
-	      v0[i] = R(i, 0);
-	      v1[i] = R(i, 1);
-	      v2[i] = R(i, 2);
-	    }
-	}
-
-      } // end of anonymous namespace.
-
-      void
-      Parser::computeHandsInformation
-      (MapHppJointType::const_iterator& hand,
-       MapHppJointType::const_iterator& wrist,
-       vector3d& center,
-       vector3d& thumbAxis,
-       vector3d& foreFingerAxis,
-       vector3d& palmNormal) const
-      {
-	matrix4d world_M_hand =
-	  hand->second->jrlJoint ()->initialPosition ();
-	matrix4d world_M_wrist =
-	  wrist->second->jrlJoint ()->initialPosition ();
-	matrix4d wrist_M_world;
-	world_M_wrist.Inversion (wrist_M_world);
-
-	// Hand to wrist transformation allows defining hand local
-	// center and axes.
-	matrix4d wrist_M_hand = wrist_M_world * world_M_hand;
-	matrix3d wrist_R_hand;
-	matrix4dToRT (wrist_M_hand, wrist_R_hand, center);
-	matrix3dToColumns (wrist_R_hand, thumbAxis, foreFingerAxis, palmNormal);
       }
 
-      void
-      Parser::fillGaze ()
+      void Parser::meshFromAssimpScene (const std::string& name,
+					const ::urdf::Vector3& scale,
+					const aiScene* scene,
+					const Parser::PolyhedronPtrType& mesh)
+      {
+	if (!scene->HasMeshes())
+	  {
+	    throw std::runtime_error (std::string ("No meshes found in file ")+
+				      name);
+	  }
+
+	std::vector<unsigned> subMeshIndexes;
+	int res = mesh->beginModel ();
+	if (res != fcl::BVH_OK) {
+	  std::ostringstream error;
+	  error << "fcl BVHReturnCode = " << res;
+	  throw std::runtime_error (error.str ());
+	}
+	vertices_.clear ();
+	triangles_.clear ();
+	buildMesh (scale, scene, scene->mRootNode, subMeshIndexes, mesh);
+	mesh->addSubModel (vertices_, triangles_);
+	mesh->endModel ();
+
+      }
+
+      void Parser::loadPolyhedronFromResource
+      (const std::string& resource_path, const ::urdf::Vector3& scale,
+       const PolyhedronPtrType& polyhedron)
+      {
+	Assimp::Importer importer;
+	importer.SetIOHandler(new ResourceIOSystem());
+	const aiScene* scene = importer.ReadFile
+	  (resource_path, aiProcess_SortByPType|
+	   aiProcess_GenNormals|aiProcess_Triangulate|aiProcess_GenUVCoords|
+	   aiProcess_FlipUVs);
+	if (!scene) {
+	  throw std::runtime_error (std::string ("Could not load resource ") +
+				    resource_path + std::string ("\n") +
+				    importer.GetErrorString ());
+	}
+
+	meshFromAssimpScene (resource_path, scale, scene, polyhedron);
+      }
+
+      void Parser::addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
+					     const JointPtr_t& joint)
+      {
+	boost::shared_ptr < ::urdf::Collision> collision = link->collision;
+	fcl::CollisionGeometryShPtr geometry;
+
+	// Handle the case where collision geometry is a mesh
+	if (collision->geometry->type == ::urdf::Geometry::MESH) {
+	  boost::shared_ptr < ::urdf::Mesh> collisionGeometry
+	    = boost::dynamic_pointer_cast< ::urdf::Mesh> (collision->geometry);
+	  std::string collisionFilename = collisionGeometry->filename;
+	  ::urdf::Vector3 scale = collisionGeometry->scale;
+
+	  // Create FCL mesh by parsing Collada file.
+	  PolyhedronPtrType  polyhedron (new PolyhedronType);
+
+	  // name is stored in link->name
+	  loadPolyhedronFromResource (collisionFilename, scale, polyhedron);
+	  geometry = polyhedron;
+	}
+
+	// Handle the case where collision geometry is a cylinder
+	// Use FCL capsules for cylinders
+	if (collision->geometry->type == ::urdf::Geometry::CYLINDER) {
+	  boost::shared_ptr < ::urdf::Cylinder> collisionGeometry
+	    = boost::dynamic_pointer_cast< ::urdf::Cylinder>
+	    (collision->geometry);
+
+	  double radius = collisionGeometry->radius;
+	  double length = collisionGeometry->length;
+
+	  // Create fcl capsule geometry.
+	  geometry = fcl::CollisionGeometryShPtr
+	    (new fcl::Capsule (radius, length));
+	}
+
+	// Handle the case where collision geometry is a box.
+	if (collision->geometry->type == ::urdf::Geometry::BOX) {
+	  boost::shared_ptr < ::urdf::Box> collisionGeometry
+	    = boost::dynamic_pointer_cast< ::urdf::Box> (collision->geometry);
+
+	  double x = collisionGeometry->dim.x;
+	  double y = collisionGeometry->dim.y;
+	  double z = collisionGeometry->dim.z;
+
+	  geometry = fcl::CollisionGeometryShPtr (new fcl::Box (x, y, z));
+	}
+	// Compute body position in world frame.
+	MatrixHomogeneousType position =
+	  computeBodyAbsolutePosition (link, collision->origin);
+	if (geometry) {
+	  CollisionObjectShPtr collisionObject
+	    (new CollisionObject (geometry, position, link->name));
+
+	  // Add solid component.
+	  Body* body = joint->linkedBody ();
+	  assert (body);
+	  body->addInnerObject (collisionObject, true, true);
+	  hppDout (info, "Adding object " << collisionObject->name ()
+		   << " to body " << body->name ());
+	}
+      }
+
+      void Parser::fillGaze ()
       {
 	MapHppJointType::const_iterator gaze =
 	  jointsMap_.find (gazeJointName_);
-	CjrlJoint* gazeJoint = gaze->second->jrlJoint ();
+	JointPtr_t gazeJoint = gaze->second;
 	robot_->gazeJoint (gazeJoint);
-	vector3d dir, origin;
+	vector3_t dir, origin;
 	// Gaze direction is defined by the gaze joint local
 	// orientation.
 	dir[0] = 1;
@@ -866,111 +732,6 @@ namespace hpp
 	origin[1] = 0;
 	origin[2] = 0;
 	robot_->gaze (dir, origin);
-      }
-
-      void
-      Parser::fillHandsAndFeet ()
-      {
-	MapHppJointType::const_iterator leftHand =
-	  jointsMap_.find (leftHandJointName_);
-	MapHppJointType::const_iterator rightHand =
-	  jointsMap_.find (rightHandJointName_);
-	MapHppJointType::const_iterator leftWrist =
-	  jointsMap_.find (leftWristJointName_);
-	MapHppJointType::const_iterator rightWrist =
-	  jointsMap_.find (rightWristJointName_);
-
-	MapHppJointType::const_iterator leftFoot =
-	  jointsMap_.find (leftFootJointName_);
-	MapHppJointType::const_iterator rightFoot =
-	  jointsMap_.find (rightFootJointName_);
-	MapHppJointType::const_iterator leftAnkle =
-	  jointsMap_.find (leftAnkleJointName_);
-	MapHppJointType::const_iterator rightAnkle =
-	  jointsMap_.find (rightAnkleJointName_);
-
-	if (leftHand != jointsMap_.end () && leftWrist != jointsMap_.end ())
-	  {
-	    HandPtrType hand
-	      = factory_.createHand (leftWrist->second->jrlJoint ());
-	    hand->setAssociatedWrist(leftWrist->second->jrlJoint ());
-
-	    vector3d center (0., 0., 0.);
-	    vector3d thumbAxis (0., 0., 0.);
-	    vector3d foreFingerAxis (0., 0., 0.);
-	    vector3d palmNormal (0., 0., 0.);
-
-	    computeHandsInformation
-	      (leftHand, leftWrist,
-	       center, thumbAxis, foreFingerAxis, palmNormal);
-
-	    hand->setCenter (center);
-	    hand->setThumbAxis (thumbAxis);
-	    hand->setForeFingerAxis (foreFingerAxis);
-	    hand->setPalmNormal (palmNormal);
-	    robot_->leftHand (hand);
-	  }
-	else {
-	  hppDout (notice, "Could not set left hand");
-	}
-
-	if (rightHand != jointsMap_.end () && rightWrist != jointsMap_.end ())
-	  {
-	    HandPtrType hand
-	      = factory_.createHand (rightWrist->second->jrlJoint ());
-	    hand->setAssociatedWrist(rightWrist->second->jrlJoint ());
-
-	    vector3d center (0., 0., 0.);
-	    vector3d thumbAxis (0., 0., 0.);
-	    vector3d foreFingerAxis (0., 0., 0.);
-	    vector3d palmNormal (0., 0., 0.);
-
-	    computeHandsInformation
-	      (rightHand, rightWrist,
-	       center, thumbAxis, foreFingerAxis, palmNormal);
-
-	    hand->setCenter (center);
-	    hand->setThumbAxis (thumbAxis);
-	    hand->setForeFingerAxis (foreFingerAxis);
-	    hand->setPalmNormal (palmNormal);
-
-	    robot_->rightHand (hand);
-	  }
-	else {
-	  hppDout (notice, "Could not set right hand");
-	}
-
-	if (leftFoot != jointsMap_.end () && leftAnkle != jointsMap_.end ())
-	  {
-	    FootPtrType foot
-	      = factory_.createFoot (leftAnkle->second->jrlJoint ());
-	    foot->setAnklePositionInLocalFrame
-	      (computeAnklePositionInLocalFrame (leftFoot, leftAnkle));
-
-	    //FIXME: to be determined using robot contact points definition.
-	    foot->setSoleSize (0., 0.);
-
-	    robot_->leftFoot (foot);
-	  }
-	else {
-	  hppDout (notice, "Could not set left foot");
-	}
-
-	if (rightFoot != jointsMap_.end () && rightAnkle != jointsMap_.end ())
-	  {
-	    FootPtrType foot
-	      = factory_.createFoot (rightAnkle->second->jrlJoint ());
-	    foot->setAnklePositionInLocalFrame
-	      (computeAnklePositionInLocalFrame (rightFoot, rightAnkle));
-
-	    //FIXME: to be determined using robot contact points definition.
-	    foot->setSoleSize (0., 0.);
-
-	    robot_->rightFoot (foot);
-	  }
-	else {
-	  hppDout (notice, "Could not set right foot");
-	}
       }
 
       std::vector<std::string>
@@ -985,20 +746,20 @@ namespace hpp
       Parser::getChildrenJoint (const std::string& jointName,
 				std::vector<std::string>& result)
       {
-	typedef boost::shared_ptr< ::urdf::Joint> jointPtr_t;
+	typedef boost::shared_ptr < ::urdf::Joint> jointPtr_t;
 
-	boost::shared_ptr<const ::urdf::Joint> joint =
+	boost::shared_ptr <const ::urdf::Joint> joint =
 	  model_.getJoint (jointName);
 
-	if (!joint && jointName != "base_joint")
+	if (!joint && jointName != "base_joint_SO3")
 	  {
 	    hppDout (error, "Failed to retrieve children joints of joint "
 		     << jointName);
 	    return false;
 	  }
 
-	boost::shared_ptr<const ::urdf::Link> childLink;
-	if (jointName == "base_joint")
+	boost::shared_ptr <const ::urdf::Link> childLink;
+	if (jointName == "base_joint_SO3")
 	  childLink = model_.getLink ("base_link");
 	else
 	  childLink = model_.getLink (joint->child_link_name);
@@ -1009,7 +770,7 @@ namespace hpp
 		     << jointName);
 	  }
 
-       	const std::vector<jointPtr_t>& jointChildren =
+	const std::vector<jointPtr_t>& jointChildren =
 	  childLink->child_joints;
 
 	BOOST_FOREACH (const jointPtr_t& joint, jointChildren)
@@ -1028,180 +789,200 @@ namespace hpp
 	return true;
       }
 
-      Parser::JointPtrType
+      void
       Parser::createFreeflyerJoint (const std::string& name,
-				    const CkitMat4& mat)
+				    const MatrixHomogeneousType& mat,
+				    DevicePtr_t robot)
       {
-	JointPtrType joint;
-	if (jointsMap_.find (name) != jointsMap_.end ())
-	  {
-	    hppDout (error, "Duplicated free flyer joint "
-		     << name);
-	    joint.reset ();
-	    return joint;
-	  }
+	JointPtr_t joint, parent;
+	const fcl::Vec3f T = mat.getTranslation ();
+	std::string jointName = name + "_x";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	// Translation along x
+	fcl::Matrix3f permutation;
+	joint = objectFactory_.createJointTranslation (mat);
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	if (robot)
+	  robot->rootJoint (joint);
+	parent = joint;
 
-      	joint = hpp::model::FreeflyerJoint::create (name, mat);
-	for (unsigned i = 0; i < 6; ++i)
-	  joint->isBounded (i, false);
-      	jointsMap_[name] = joint;
-	return joint;
+	// Translation along y
+	permutation (0,0) = 0; permutation (0,1) = -1; permutation (0,2) = 0;
+	permutation (1,0) = 1; permutation (1,1) =  0; permutation (1,2) = 0;
+	permutation (2,0) = 0; permutation (2,1) =  0; permutation (2,2) = 1;
+	fcl::Transform3f pos;
+	pos.setRotation (permutation * mat.getRotation ());
+	pos.setTranslation (T);
+	joint = objectFactory_.createJointTranslation (pos);
+	jointName = name + "_y";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	parent->addChildJoint (joint);
+	parent = joint;
+
+	// Translation along z
+	permutation (0,0) = 0; permutation (0,1) = 0; permutation (0,2) = -1;
+	permutation (1,0) = 0; permutation (1,1) = 1; permutation (1,2) =  0;
+	permutation (2,0) = 1; permutation (2,1) = 0; permutation (2,2) =  0;
+	pos.setRotation (permutation * mat.getRotation ());
+	pos.setTranslation (T);
+	joint = objectFactory_.createJointTranslation (pos);
+	jointName = name + "_z";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	parent->addChildJoint (joint);
+	parent = joint;
+	// joint SO3
+	joint = objectFactory_.createJointSO3 (mat);
+	jointName = name + "_SO3";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	parent->addChildJoint (joint);
       }
 
-      Parser::JointPtrType
+      JointPtr_t
       Parser::createRotationJoint (const std::string& name,
-				   const CkitMat4& mat,
+				   const MatrixHomogeneousType& mat,
 				   const Parser::UrdfJointLimitsPtrType& limits)
       {
-	JointPtrType joint;
-	if (jointsMap_.find (name) != jointsMap_.end ())
-	  {
-	    hppDout (error, "Duplicated rotation joint "
-		     << name);
-	    joint.reset ();
-	    return joint;
-	  }
+	JointPtr_t joint;
+	if (jointsMap_.find (name) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
 
-	joint = hpp::model::RotationJoint::create (name, mat);
-	if (limits)
-	  {
-	    joint->isBounded (0, true);
-	    joint->bounds (0, limits->lower, limits->upper);
-	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
-	    joint->torqueBounds (0, -limits->effort, limits->effort);
-	  }
-      	jointsMap_[name] = joint;
+	joint = objectFactory_.createJointRotation (mat);
+	joint->name (name);
+	if (limits) {
+	  joint->isBounded (0, true);
+	  joint->lowerBound (0, limits->lower);
+	  joint->upperBound (0, limits->upper);
+	} else {
+	  joint->isBounded (0, false);
+	  joint->lowerBound
+	    (0, -numeric_limits <double>::infinity ());
+	  joint->upperBound
+	    (0, numeric_limits <double>::infinity ());
+	}
+	jointsMap_[name] = joint;
 	return joint;
       }
 
-      Parser::JointPtrType
+      JointPtr_t
       Parser::createContinuousJoint (const std::string& name,
-				     const CkitMat4& mat)
+				     const MatrixHomogeneousType& mat)
       {
-	JointPtrType joint;
-	if (jointsMap_.find (name) != jointsMap_.end ())
-	  {
-	    hppDout (error, "Duplicated continuous joint "
-		     << name);
-	    joint.reset ();
-	    return joint;
-	  }
+	JointPtr_t joint;
+	if (jointsMap_.find (name) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
 
-      	joint = hpp::model::RotationJoint::create (name, mat);
+	joint = objectFactory_.createJointRotation (mat);
+	joint->name (name);
 	joint->isBounded (0, false);
-      	jointsMap_[name] = joint;
+	joint->lowerBound
+	  (0, -numeric_limits <double>::infinity ());
+	joint->upperBound
+	  (0, numeric_limits <double>::infinity ());
+	jointsMap_[name] = joint;
 	return joint;
       }
 
-      Parser::JointPtrType
+      JointPtr_t
       Parser::createTranslationJoint (const std::string& name,
-				      const CkitMat4& mat,
+				      const MatrixHomogeneousType& mat,
 				      const Parser::
 				      UrdfJointLimitsPtrType& limits)
       {
-	JointPtrType joint;
-	if (jointsMap_.find (name) != jointsMap_.end ())
-	  {
-	    hppDout (error, "Duplicated translation joint "
-		     << name);
-	    joint.reset ();
-	    return joint;
-	  }
+	JointPtr_t joint;
+	if (jointsMap_.find (name) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
 
-      	joint = hpp::model::TranslationJoint::create (name, mat);
-	if (limits)
-	  {
-	    joint->isBounded (0, true);
-	    joint->bounds (0, limits->lower, limits->upper);
-	    joint->velocityBounds (0, -limits->velocity, limits->velocity);
-	    joint->torqueBounds (0, -limits->effort, limits->effort);
-	  }
-      	jointsMap_[name] = joint;
+	joint = objectFactory_.createJointTranslation
+	  (mat);
+	if (limits) {
+	  joint->isBounded (0, true);
+	  joint->lowerBound (0, limits->lower);
+	  joint->upperBound (0, limits->upper);
+	} else {
+	  joint->isBounded (0, false);
+	  joint->lowerBound
+	    (0, -numeric_limits <double>::infinity ());
+	  joint->upperBound
+	    (0, numeric_limits <double>::infinity ());
+	}
+	jointsMap_[name] = joint;
 	return joint;
       }
 
-      Parser::JointPtrType
-      Parser::createAnchorJoint (const std::string& name, const CkitMat4& mat)
+      JointPtr_t
+      Parser::createAnchorJoint (const std::string& name,
+				 const MatrixHomogeneousType& mat)
       {
-	JointPtrType joint;
-	if (jointsMap_.find (name) != jointsMap_.end ())
-	  {
-	    hppDout (error, "Duplicated anchor joint "
-		     << name);
-	    joint.reset ();
-	    return joint;
-	  }
+	JointPtr_t joint;
+	if (jointsMap_.find (name) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
 
-      	joint = hpp::model::AnchorJoint::create (name, mat);
-      	jointsMap_[name] = joint;
+	joint = objectFactory_.createJointAnchor (mat);
+	joint->name (name);
+	jointsMap_[name] = joint;
 	return joint;
       }
 
-      Parser::JointPtrType
+      JointPtr_t
       Parser::findJoint (const std::string& jointName)
       {
-	Parser::MapHppJointType::const_iterator it = jointsMap_.find (jointName);
-	if (it == jointsMap_.end ())
-	  {
-	    Parser::JointPtrType ptr;
-	    ptr.reset ();
-	    return ptr;
-	  }
+	Parser::MapHppJointType::const_iterator it =
+	  jointsMap_.find (jointName);
+	if (it == jointsMap_.end ()) {
+	  throw std::runtime_error ("Joint " + jointName + " not found.");
+	}
 	return it->second;
       }
 
-      CkitMat4
+      Parser::MatrixHomogeneousType
       Parser::poseToMatrix (::urdf::Pose p)
       {
-	CkitMat4 t;
-
 	// Fill rotation part: convert quaternion to rotation matrix.
-	double q0 = p.rotation.w;
-	double q1 = p.rotation.x;
-	double q2 = p.rotation.y;
-	double q3 = p.rotation.z;
-	t(0,0) = q0*q0 + q1*q1 - q2*q2 - q3*q3;
-	t(0,1) = 2*q1*q2 - 2*q0*q3;
-	t(0,2) = 2*q1*q3 + 2*q0*q2;
-	t(1,0) = 2*q1*q2 + 2*q0*q3;
-	t(1,1) = q0*q0 - q1*q1 + q2*q2 - q3*q3;
-	t(1,2) = 2*q2*q3 - 2*q0*q1;
-	t(2,0) = 2*q1*q3 - 2*q0*q2;
-	t(2,1) = 2*q2*q3 + 2*q0*q1;
-	t(2,2) = q0*q0 - q1*q1 - q2*q2 + q3*q3;
-
+	fcl::Quaternion3f quat (p.rotation.w, p.rotation.x, p.rotation.y,
+				p.rotation.z);
 	// Fill translation part.
-	t(0, 3) = p.position.x;
-	t(1, 3) = p.position.y;
-	t(2, 3) = p.position.z;
-	t(3, 3) = 1.;
+	fcl::Vec3f T;
+	T [0] = p.position.x;
+	T [1] = p.position.y;
+	T [2] = p.position.z;
 
-	t(3, 0) = 0;
-	t(3, 1) = 0;
-	t(3, 2) = 0.;
-
-	return t;
+	return MatrixHomogeneousType (quat, T);
       }
 
-      vector3d
-      Parser::computeAnklePositionInLocalFrame
-      (MapHppJointType::const_iterator& foot,
-       MapHppJointType::const_iterator& ankle) const
-      {
-	matrix4d world_M_foot =
-	  foot->second->jrlJoint ()->initialPosition ();
-	matrix4d world_M_ankle =
-	  ankle->second->jrlJoint ()->initialPosition ();
-	matrix4d foot_M_world;
-	world_M_foot.Inversion (foot_M_world);
-
-	matrix4d foot_M_ankle = foot_M_world * world_M_ankle;
-	return vector3d (foot_M_ankle (0, 3),
-			 foot_M_ankle (1, 3),
-			 foot_M_ankle (2, 3));
-      }
-
-      CkitMat4
+      Parser::MatrixHomogeneousType
       Parser::getPoseInReferenceFrame (const std::string& referenceJointName,
 				       const std::string& currentJointName)
       {
@@ -1216,8 +997,8 @@ namespace hpp
 	  {
 	    hppDout (error,
 		     "Failed to retrieve parent while computing joint position");
-	    CkitMat4 result;
-	    result.identity ();
+	    MatrixHomogeneousType result;
+	    result.setIdentity ();
 	    return result;
 	  }
 
@@ -1225,7 +1006,7 @@ namespace hpp
 	::urdf::Pose jointToParentTransform =
 	    joint->parent_to_joint_origin_transform;
 
-	CkitMat4 transform = poseToMatrix (jointToParentTransform);
+	MatrixHomogeneousType transform = poseToMatrix (jointToParentTransform);
 
 	// Get parent joint name.
 	std::string parentLinkName = joint->parent_link_name;
@@ -1247,6 +1028,7 @@ namespace hpp
       Parser::RobotPtrType
       Parser::parse (const std::string& filename)
       {
+	hppDout (info, "filename: " << filename);
 	resource_retriever::Retriever resourceRetriever;
 
 	resource_retriever::MemoryResource resource =
@@ -1266,34 +1048,26 @@ namespace hpp
 	// multiple robots using the same object.
 	model_.clear ();
 	robot_ = hpp::model::HumanoidRobot::create (model_.getName ());
-	rootJoint_.reset ();
+	rootJoint_ = 0;
 	jointsMap_.clear ();
 
 	// Parse urdf model.
-	if (!model_.initString (robotDescription))
-	  {
-	    hppDout (error, "Failed to open URDF file."
-		     << " Is the filename location correct?");
-	    robot_.reset ();
-	    return robot_;
-	  }
+	if (!model_.initString (robotDescription)) {
+	  throw std::runtime_error ("Failed to open urdf file. "
+				    "robotDescription:\n" + robotDescription);
+	}
 
 	// Get names of special joints.
 	findSpecialJoints ();
 
 	// Look for joints in the URDF model tree.
-	if (!parseJoints ())
-	  {
-	    hppDout (error, "Could not parse joints.");
-	    robot_.reset ();
-	    return robot_;
-	  }
+	parseJoints ();
 
 	// Create the kinematic tree.
 	// We iterate over the URDF root joints to connect them to the
 	// root link that we added "manually" before. Then we iterate
 	// in the whole tree using the connectJoints method.
-	boost::shared_ptr<const ::urdf::Link> rootLink = model_.getRoot ();
+	boost::shared_ptr <const ::urdf::Link> rootLink = model_.getRoot ();
 	if (!rootLink)
 	  {
 	    hppDout (error, "URDF model is missing a root link");
@@ -1301,47 +1075,20 @@ namespace hpp
 	    return robot_;
 	  }
 
-	typedef boost::shared_ptr<const ::urdf::Joint> JointPtr_t;
-	if (!connectJoints (rootJoint_))
-	  {
-	    hppDout (error, "Could not connect joints.");
-	    robot_.reset ();
-	    return robot_;
-	  }
-
+	connectJoints (jointsMap_ ["base_joint_SO3"]);
 	// Look for special joints and attach them to the model.
 	setSpecialJoints ();
 
 	// Add corresponding body (link) to each joint.
-	if (!addBodiesToJoints ())
-	  {
-	    hppDout (error, "Could not add bodies to joints.");
-	    robot_.reset ();
-	    return robot_;
-	  }
-
-	// Initialize dynamic part.
-	robot_->initialize();
-
-	// Set model actuated joints. Make sure to call this *after*
-	// initializating the structure.
-	std::vector<CjrlJoint*> actJointsVect = actuatedJoints ();
-	robot_->setActuatedJoints (actJointsVect);
+	addBodiesToJoints ();
 
 	// Fill gaze position and direction.
 	fillGaze ();
 
-	// Here we need to use joints initial positions. Make sure to
-	// call this *after* initializating the structure.
-	fillHandsAndFeet ();
-
-	// Set default steering method that will be used by roadmap
-	// builders.
-	robot_->steeringMethodComponent (CkppSMLinearComponent::create ());
-
+	Configuration_t q (robot_->configSize ()); q.setZero ();
+	q [3] = 1;
+	robot_->currentConfiguration (q);
 	//Set bounds on freeflyer dofs
-	setFreeFlyerBounds ();
-
 	return robot_;
       }
 

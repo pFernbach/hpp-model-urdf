@@ -1,8 +1,6 @@
-# Copyright 2012, 
+# Copyright 2012, 2013, 2014 CNRS-LAAS
 #
-# Antonio El Khoury
-#
-# JRL/LAAS, CNRS/AIST
+# Author: Antonio El Khoury
 #
 # This file is part of hpp-model-urdf.
 # hpp-model-urdf is free software: you can redistribute it and/or modify
@@ -27,12 +25,9 @@ ADD_LIBRARY(${LIBRARY_NAME}
   rcpdf/parser.cc
   )
 
-SET_TARGET_PROPERTIES(${LIBRARY_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
-
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} assimp)
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} hpp-util)
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} hpp-model)
-PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} hpp-geometry)
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} urdf)
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} urdfdom)
 PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} resource_retriever)

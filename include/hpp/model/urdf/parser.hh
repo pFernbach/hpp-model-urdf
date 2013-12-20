@@ -1,4 +1,5 @@
-// Copyright (C) 2012 by Antonio El Khoury.
+// Copyright (C) 2012, 2013, 2014 CNRS-LAAS
+// Authors: Antonio El Khoury, Florent Lamiraux
 //
 // This file is part of the hpp-model-urdf.
 //
@@ -28,7 +29,15 @@
 
 # include <urdf/model.h>
 
+# include <fcl/BV/OBB.h>
+# include <fcl/BVH/BVH_model.h>
+
+# include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
+# include <hpp/model/object-factory.hh>
+
+class aiNode;
+class aiScene;
 
 namespace hpp
 {
@@ -41,22 +50,22 @@ namespace hpp
       class Parser
       {
       public:
-	typedef boost::shared_ptr< ::urdf::Link> UrdfLinkPtrType;
-	typedef boost::shared_ptr< ::urdf::Joint> UrdfJointPtrType;
-	typedef boost::shared_ptr< ::urdf::JointLimits> UrdfJointLimitsPtrType;
-	typedef boost::shared_ptr<const ::urdf::Link> UrdfLinkConstPtrType;
-	typedef boost::shared_ptr<const ::urdf::Joint> UrdfJointConstPtrType;
+	typedef boost::shared_ptr < ::urdf::Link> UrdfLinkPtrType;
+	typedef boost::shared_ptr < ::urdf::Joint> UrdfJointPtrType;
+	typedef boost::shared_ptr < ::urdf::JointLimits> UrdfJointLimitsPtrType;
+	typedef boost::shared_ptr <const ::urdf::Link> UrdfLinkConstPtrType;
+	typedef boost::shared_ptr <const ::urdf::Joint> UrdfJointConstPtrType;
 
-	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
-	typedef hpp::model::Joint JointType;
-	typedef hpp::model::JointShPtr JointPtrType;
-	typedef CkwsKCDBodyAdvanced BodyType;
-	typedef CkwsKCDBodyAdvancedShPtr BodyPtrType;
-	typedef CjrlHand* HandPtrType;
-	typedef CjrlFoot* FootPtrType;
+	typedef HumanoidRobotShPtr RobotPtrType;
+	typedef Joint JointType;
+	typedef Body BodyType;
+	typedef fcl::BVHModel< fcl::RSS > PolyhedronType;
+	typedef boost::shared_ptr <PolyhedronType> PolyhedronPtrType;
+
+	typedef Transform3f MatrixHomogeneousType;
 
 	/// \brief Map of abstract robot dynamics compatible joints.
-	typedef std::map<const std::string, JointPtrType> MapHppJointType;
+	typedef std::map<const std::string, JointPtr_t> MapHppJointType;
 	/// \brief Map of URDF joints.
 	typedef std::map<std::string, UrdfJointPtrType> MapJointType;
 
@@ -64,11 +73,6 @@ namespace hpp
 	explicit Parser ();
 	/// \brief Destructor.
 	virtual ~Parser ();
-
-	void displayActuatedJoints(std::ostream &os);
-	void displayFoot(CjrlFoot* aFoot,std::ostream& os);
-	void displayHand(CjrlHand* aHand,std::ostream& os);
-	void displayEndEffectors(std::ostream& os);
 
 	/// \brief Parse an URDF file and return a humanoid robot.
 	///
@@ -90,11 +94,10 @@ namespace hpp
 	RobotPtrType
 	parseStream (const std::string& robotDescription);
 
-      protected:
+      private:
 	/// \brief Retrieve joint name attached to a particular link.
-	void
-	findSpecialJoint (const std::string& linkName,
-			  std::string& jointName);
+	void findSpecialJoint (const std::string& linkName,
+			       std::string& jointName);
 
 	/// \brief Find special joints using REP 120.
 	///
@@ -102,128 +105,106 @@ namespace hpp
 	/// joints where as REP 120 deals with frames/robot links.
 	/// We have to use the REP naming standard to identify the
 	/// links and then retrieve the attached joints name.
-	void
-	findSpecialJoints ();
+	void findSpecialJoints ();
 
 	/// \brief Set special joints in robot.
-	void
-	setSpecialJoints ();
+	void setSpecialJoints ();
 
 	/// \brief Parse URDF model and get joints.
 	///
 	/// Each joint in the URDF model is used to build the
 	/// corresponding hpp::model::JointShPtr object.
-	bool
-	parseJoints ();
-
-	/// \brief Get actuated joints.
-	std::vector<CjrlJoint*>
-	actuatedJoints();
+	void parseJoints ();
 
 	/// \brief Connect recursively joints to their children.
-	bool
-	connectJoints (const JointPtrType& rootJoint);
+	void connectJoints (const JointPtr_t& rootJoint);
 
 	/// \brief Parse bodies and add them to joints.
-	bool addBodiesToJoints();
+	void addBodiesToJoints();
 
 	/// \brief compute body absolute position.
 	///
 	/// \param link link for which absolute position is computed
 	/// \param pose pose in local from, i.e origin of visual or
 	/// collision node
-	CkitMat4
-	computeBodyAbsolutePosition (const UrdfLinkConstPtrType& link,
-				     const ::urdf::Pose& pose);
+	MatrixHomogeneousType computeBodyAbsolutePosition
+	(const UrdfLinkConstPtrType& link, const ::urdf::Pose& pose);
+
+	/// \brief Load polyhedron from resource.
+	void loadPolyhedronFromResource
+	(const std::string& filename, const ::urdf::Vector3& scale,
+	 const Parser::PolyhedronPtrType& polyhedron);
+
+	void meshFromAssimpScene (const std::string& name,
+				  const ::urdf::Vector3& scale,
+				  const aiScene* scene,
+				  const PolyhedronPtrType& mesh);
+
+	void buildMesh (const ::urdf::Vector3& scale,
+			const aiScene* scene,
+			const aiNode* node,
+			std::vector<unsigned>& subMeshIndexes,
+			const PolyhedronPtrType& mesh);
 
 	/// \brief Add solid component to body.
 	///
 	/// The visual and collision geometries attached to the link
-	/// are used to create the appropriate Kite solid component.
-	bool
-	addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
-				  const JointPtrType& joint);
-
-	/// \brief Set free-flyer joint bounds for roamdap builders.
-	void
-	setFreeFlyerBounds ();
-
-	/// \brief Compute hands information.
-	void
-	computeHandsInformation (MapHppJointType::const_iterator& hand,
-				 MapHppJointType::const_iterator& wrist,
-				 vector3d& center,
-				 vector3d& thumbAxis,
-				 vector3d& foreFingerAxis,
-				 vector3d& palmNormal) const;
+	/// are used to create the appropriate FCL geometry.
+	void addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
+				       const JointPtr_t& joint);
 
 	/// \brief Fill gaze.
 	void fillGaze ();
 
-	/// \brief Fill hands and feet.
-	void
-	fillHandsAndFeet ();
-
 	// returns, in a vector, the children of a joint, or a
 	// subchildren if no children si present in the actuated
 	// joints map.
-	std::vector<std::string>
-	getChildrenJoint (const std::string& jointName);
+	std::vector<std::string> getChildrenJoint
+	(const std::string& jointName);
 
 	bool getChildrenJoint (const std::string& jointName,
 			       std::vector<std::string>& result);
 
-	/// \brief Create free-flyer joint and add it to joints map.
-	JointPtrType
-	createFreeflyerJoint (const std::string& name, const CkitMat4& mat);
+	/// Create free-flyer joints and add them to joints map.
+	/// If robot is provided, set root joint.
+	void createFreeflyerJoint (const std::string& name,
+				   const MatrixHomogeneousType& mat,
+				   DevicePtr_t robot = DevicePtr_t ());
 
 	/// \brief Create rotation joint and add it to joints map.
-	JointPtrType
-	createRotationJoint (const std::string& name,
-			     const CkitMat4& mat,
-			     const UrdfJointLimitsPtrType& limits);
+	JointPtr_t createRotationJoint (const std::string& name,
+					  const MatrixHomogeneousType& mat,
+					  const UrdfJointLimitsPtrType& limits);
 
 	/// \brief Create continuous joint and add it to joints map.
-	JointPtrType
-	createContinuousJoint (const std::string& name,
-			       const CkitMat4& mat);
+	JointPtr_t createContinuousJoint (const std::string& name,
+					    const MatrixHomogeneousType& mat);
 
 	/// \brief Create translation joint and add it to joints map.
-	JointPtrType
-	createTranslationJoint (const std::string& name,
-				const CkitMat4& mat,
-				const UrdfJointLimitsPtrType& limits);
+	JointPtr_t createTranslationJoint
+	(const std::string& name, const MatrixHomogeneousType& mat,
+	 const UrdfJointLimitsPtrType& limits);
 
 	/// \brief Create anchor joint and add it to joints map.
-	JointPtrType
-	createAnchorJoint (const std::string& name, const CkitMat4& mat);
+	JointPtr_t createAnchorJoint (const std::string& name,
+					const MatrixHomogeneousType& mat);
 
 	/// \brief Get joint by looking for string in joints map
 	/// attribute.
-	JointPtrType
-	findJoint (const std::string& jointName);
+	JointPtr_t findJoint (const std::string& jointName);
 
-	/// \brief Compute ankle position in foot frame.
-	vector3d
-	computeAnklePositionInLocalFrame
-	(MapHppJointType::const_iterator& foot,
-	 MapHppJointType::const_iterator& ankle) const;
-
-	/// \brief Convert URDF pose to CkitMat4 transformation.
-	CkitMat4
-	poseToMatrix (::urdf::Pose p);
+	/// \brief Convert URDF pose to MatrixHomogeneousType transformation.
+	MatrixHomogeneousType poseToMatrix (::urdf::Pose p);
 
 	/// \brief Get joint position in given reference frame.
-	CkitMat4
-	getPoseInReferenceFrame(const std::string& referenceJointName,
-				const std::string& currentJointName);
+	MatrixHomogeneousType getPoseInReferenceFrame
+	(const std::string& referenceJointName,
+	 const std::string& currentJointName);
 
-      private:
 	::urdf::Model model_;
 	RobotPtrType robot_;
-	JointPtrType rootJoint_;
+	JointPtr_t rootJoint_;
 	MapHppJointType jointsMap_;
-	dynamicsJRLJapan::ObjectFactory factory_;
 
 	/// \brief Special joints names.
 	/// \{
@@ -239,9 +220,10 @@ namespace hpp
 	std::string rightFootJointName_;
 	std::string gazeJointName_;
 	/// \}
-
+	std::vector <fcl::Vec3f> vertices_;
+	std::vector <fcl::Triangle> triangles_;
+	ObjectFactory objectFactory_;
       }; // class Parser
-
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace hpp.

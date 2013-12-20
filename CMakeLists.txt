@@ -1,8 +1,6 @@
-# Copyright 2012, 
+# Copyright 2012, 2013, 2014 CNRS-LAAS
 #
-# Antonio El Khoury
-#
-# JRL/LAAS, CNRS/AIST
+# Author: Antonio El Khoury
 #
 # This file is part of hpp-model-urdf.
 # hpp-model-urdf is free software: you can redistribute it and/or modify
@@ -24,7 +22,6 @@ INCLUDE(cmake/base.cmake)
 INCLUDE(cmake/cpack.cmake)
 INCLUDE(cmake/boost.cmake)
 INCLUDE(cmake/ros.cmake)
-INCLUDE(cmake/kineo.cmake)
 
 SET(PROJECT_NAME hpp-model-urdf)
 SET(PROJECT_DESCRIPTION "Implementation of a parser for hpp-model")
@@ -55,10 +52,8 @@ SEARCH_FOR_BOOST()
 
 # Search for dependecies.
 ADD_REQUIRED_DEPENDENCY("assimp")
-ADD_REQUIRED_DEPENDENCY("KineoController >= 2.07")
 ADD_REQUIRED_DEPENDENCY("hpp-util >= 0.6")
 ADD_REQUIRED_DEPENDENCY("hpp-model >= 2.3")
-ADD_REQUIRED_DEPENDENCY("hpp-geometry >= 1.2")
 ADD_REQUIRED_DEPENDENCY("resource_retriever")
 ADD_REQUIRED_DEPENDENCY("urdf")
 ADD_REQUIRED_DEPENDENCY("urdfdom")

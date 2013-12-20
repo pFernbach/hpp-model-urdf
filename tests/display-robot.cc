@@ -23,26 +23,15 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/output_test_stream.hpp>
 
-#include <KineoModel/kppLicense.h>
-#include <KineoModel/kppJointComponent.h>
-
-#include "hpp/model/urdf/util.hh"
+#include <hpp/model/device.hh>
+#include <hpp/model/urdf/util.hh>
 
 using boost::test_tools::output_test_stream;
 
 BOOST_AUTO_TEST_CASE (display_robot)
 {
-  // Validate Kineo license.
-  if (!CkppLicense::initialize ())
-    {
-      std::cout << "Failed to validate Kineo license." << std::endl;
-      return;
-    }
-
   hpp::model::HumanoidRobotShPtr humanoidRobot;
-  BOOST_CHECK_EQUAL(hpp::model::urdf::loadRobotModel
-		    (humanoidRobot, "romeo", "", "", ""),
-		    true);
+  hpp::model::urdf::loadRobotModel (humanoidRobot, "romeo", "", "", "");
 
   std::ofstream log ("./display-robot.log");
   log << *(humanoidRobot.get ()) << std::endl;

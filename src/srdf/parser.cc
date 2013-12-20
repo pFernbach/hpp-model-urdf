@@ -22,21 +22,19 @@
  * \brief Implementation of URDF Parser for hpp-model.
  */
 
-#include <boost/filesystem/fstream.hpp>
+#include <sstream>
 #include <boost/foreach.hpp>
-#include <boost/format.hpp>
-
 #include <resource_retriever/retriever.h>
 
 #include <urdf/model.h>
 
+#include <jrl/mal/matrixabstractlayer.hh>
 #include <hpp/util/assertion.hh>
 #include <hpp/util/debug.hh>
+#include <hpp/model/collision-object.hh>
+#include <hpp/model/joint.hh>
 
-#include <hpp/model/types.hh>
-#include <hpp/model/capsule-body-distance.hh>
-
-#include "hpp/model/srdf/parser.hh"
+#include <hpp/model/srdf/parser.hh>
 
 namespace hpp
 {
@@ -47,8 +45,7 @@ namespace hpp
       Parser::Parser ()
 	: urdfModel_ (),
 	  srdfModel_ (),
-	  robot_ (),
-	  colPairs_ ()
+	  robot_ ()
       {}
 
       Parser::~Parser ()
@@ -69,91 +66,66 @@ namespace hpp
 	  }
       }
 
-      void
-      Parser::displayAddedCollisionPairs (std::ostream& os)
+      void Parser::addCollisionPairs ()
       {
-	os << "Added collision pairs list size: "
-	   << colPairs_.size () << std::endl;
+	JointVector_t joints = robot_->getJointVector ();
 
-	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
-	  {
-	    os << colPair.link1_ << " " << colPair.link2_ << std::endl;
-	  }
-      }
-
-      bool
-      Parser::addCollisionPairs ()
-      {
-	// Cycle through body distances to add collision pairs.
-	BOOST_FOREACH (BodyDistanceShPtr bodyDistance_i,
-		       robot_->bodyDistances ())
-	  {
-	    BodyPtrType body_i = bodyDistance_i->body ();
-	    std::string bodyName_i = bodyDistance_i->name ();
-	    
-	    // Build distance computation analyses for inner objects.
-	    ObjectPtrsType objects_i = body_i->mobileObjects ();
-	    BOOST_FOREACH (CkcdObjectShPtr object_i, objects_i)
-	      {
-		// Treat segment case separately for fast distance
-		// computation.
-		SegmentPtrType segment_i
-		  = KIT_DYNAMIC_PTR_CAST (SegmentType, object_i);
-		if (segment_i)
-		  {
-		    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
-		      = KIT_DYNAMIC_PTR_CAST (CapsuleBodyDistance,
-					      bodyDistance_i);
-		    assert (capsuleBodyDistance_i);
-		    capsuleBodyDistance_i->addInnerCapsule (segment_i, true);
+	// Cycle through all joint pairs
+	for (JointVector_t::iterator it1 = joints.begin ();
+	     it1 != joints.end (); it1++) {
+	  JointPtr_t joint1 = *it1;
+	  hppDout (info, "Cycling through joint " << joint1->name ()
+		   << ": " << joint1);
+	  Body* body1 = joint1->linkedBody ();
+	  if (!body1) {
+	    hppDout (notice, "Joint " + joint1->name () <<
+		     " has no hpp::model::Body.");
+	  } else {
+	    hppDout (info, "body " << body1);
+	    std::string bodyName1 = body1->name ();
+	    for (JointVector_t::iterator it2 = joints.begin ();
+		 it2 != it1; it2++) {
+	      JointPtr_t joint2 = *it2;
+	      hppDout (info, "  Cycling through joint " << joint2->name ());
+	      Body* body2 = joint2->linkedBody ();
+	      if (!body2) {
+		hppDout (notice, "Joint " + joint2->name () <<
+			 " has no hpp::model::Body.");
+	      } else {
+		std::string bodyName2 = body2->name ();
+		if (!isCollisionPairDisabled (bodyName1, bodyName2)) {
+		  hppDout (info, "Handling pair: ("  << bodyName1 << ","
+			   << bodyName2 << ")");
+		  // Add each inner object of body 1 as outer object of body 2
+		  const ObjectVector_t& collisionObjects =
+		    body1->innerObjects (COLLISION);
+		  hppDout (info, "Number of collision objects in body "
+			   << bodyName1 << ": " << collisionObjects.size ());
+		  for (ObjectVector_t::const_iterator itObj1 =
+			 collisionObjects.begin ();
+		       itObj1 != collisionObjects.end (); itObj1++) {
+		    body2->addOuterObject (*itObj1, true, false);
+		    hppDout (info, "Adding object " << (*itObj1)->name ()
+			     << " to body " << body2->name ()
+			     << " for collision");
 		  }
-		bodyDistance_i->addInnerObject (object_i, false);
-	      }
-
-	    BOOST_FOREACH (BodyDistanceShPtr bodyDistance_j,
-			   robot_->bodyDistances ())
-	      {
-		BodyPtrType body_j = bodyDistance_j->body ();
-		if (!body_j)
-		  continue;
-		std::string bodyName_j = bodyDistance_j->name ();
-
-		// Add collision pair after checking it is not
-		// disabled, and that it has not been already added.
-		if (bodyName_i != bodyName_j
-		    && !isCollisionPairDisabled (bodyName_i, bodyName_j)
-		    && !isCollisionPairAdded (bodyName_i, bodyName_j))
-		  {
-		    // Add collision pairs only for bodies that have
-		    // geometric objects attached to them.
-		    ObjectPtrsType objects_j = body_j->mobileObjects ();
-		    for (unsigned i = 0; i < objects_j.size (); ++i)
-		      {
-			CkcdObjectShPtr object = objects_j[i];
-			// Treat segment case separately for fast distance
-			// computation.
-			SegmentPtrType segment
-			  = KIT_DYNAMIC_PTR_CAST (SegmentType, object);
-			if (segment)
-			  {
-			    CapsuleBodyDistanceShPtr capsuleBodyDistance_i
-			      = KIT_DYNAMIC_PTR_CAST (CapsuleBodyDistance,
-						     bodyDistance_i);
-			    assert (capsuleBodyDistance_i);
-			    capsuleBodyDistance_i->addOuterCapsule (segment,
-								    true);
-			  }
-			bodyDistance_i->addOuterObject (object, false);
-		      }
-		    CollisionPairType cpt;
-		    cpt.link1_ = bodyName_i;
-		    cpt.link2_ = bodyName_j;
-		    colPairs_.push_back (cpt);
+		  const ObjectVector_t& distanceObjects =
+		    body1->innerObjects (DISTANCE);
+		  hppDout (info, "Number of distance objects in body "
+			   << bodyName1 << ": " << distanceObjects.size ());
+		  for (ObjectVector_t::const_iterator itObj1 =
+			 distanceObjects.begin ();
+		       itObj1 != distanceObjects.end (); itObj1++) {
+		    body2->addOuterObject (*itObj1, false, true);
+		    hppDout (info, "Adding object " << (*itObj1)->name ()
+			     << " to body " << body2->name ()
+			     << " for distance");
 		  }
+		}
 	      }
+	    }
 	  }
-
-	return true;
+	}
       }
 
       bool
@@ -172,24 +144,6 @@ namespace hpp
 
 	    if ((bodyName_1 == disabled1 && bodyName_2 == disabled2)
 		|| (bodyName_1 == disabled2 && bodyName_2 == disabled1))
-		return true;
-	  }
-
-	return false;
-      }
-
-      bool
-      Parser::isCollisionPairAdded (const std::string& bodyName_1,
-				    const std::string& bodyName_2)
-      {
-	// Cycle through added collision pairs.
-	BOOST_FOREACH (CollisionPairType colPair, colPairs_)
-	  {
-	    std::string added1 = colPair.link1_;
-	    std::string added2 = colPair.link2_;
-
-	    if ((bodyName_1 == added1 && bodyName_2 == added2)
-		|| (bodyName_1 == added2 && bodyName_2 == added1))
 		return true;
 	  }
 
@@ -252,172 +206,7 @@ namespace hpp
 	return true;
       }
 
-      bool
-      Parser::computeFullConfiguration (HppConfigurationType& configuration,
-					const bool isRightFootSupporting,
-					const double& floorHeight)
-      {
-	// Set current robot configuration.
-	robot_->hppSetCurrentConfig (configuration);
-
-	CjrlJoint* waist = robot_->waist ();
-	CjrlJoint* ankle = isRightFootSupporting ?
-	  robot_->rightAnkle() : robot_->leftAnkle();
-	CjrlFoot* sole = isRightFootSupporting ?
-	  robot_->rightFoot () : robot_->leftFoot ();
-
-	if (!waist)
-	  {
-	    hppDout (error, "No pointer to waist.");
-	    return false;
-	  }
-	if (!ankle)
-	  {
-	    hppDout (error, "No pointer to supporting ankle.");
-	    return false;
-	  }
-	if (!sole)
-	  {
-	    hppDout (error, "No pointer to supporting sole.");
-	    return false;
-	  }
-
-	// Compute waist transformation in floor given an absolute
-	// (right) foot transformation.
-	matrix4d waistTInWorld = waist->currentTransformation ();
-	matrix4d ankleTInWorld = ankle->currentTransformation ();
-	vector3d anklePInSole;
-	sole->getAnklePositionInLocalFrame (anklePInSole);
-	matrix4d ankleTInFloor;
-	ankleTInFloor(0,0) = 1;
-	ankleTInFloor(1,1) = 1;
-	ankleTInFloor(2,2) = 1;
-	ankleTInFloor(3,3) = 1;
-	ankleTInFloor(0,3) = anklePInSole[0];
-	ankleTInFloor(1,3) = anklePInSole[1];
-	ankleTInFloor(2,3) = anklePInSole[2] + floorHeight;
-
-	matrix4d worldTInAnkle;
-	MAL_S4x4_INVERSE (ankleTInWorld, worldTInAnkle, double);
-	matrix4d waistTInAnkle;
-	MAL_S4x4_C_eq_A_by_B (waistTInAnkle, worldTInAnkle, waistTInWorld);
-	matrix4d waistTInFloor;
-	MAL_S4x4_C_eq_A_by_B (waistTInFloor, ankleTInFloor, waistTInAnkle);
-
-	// Fill free-flyer dof values in configuration vector.
-	configuration[0] = 0;
-	configuration[1] = 0;
-	configuration[2] = waistTInFloor(2,3);
-	configuration[3] = atan2 (waistTInFloor(1,2), waistTInFloor(2,2));
-	configuration[4] = - asin (waistTInFloor(0,2));
-	configuration[5] = atan2 (waistTInFloor(0,1), waistTInFloor(0,0));
-
-	return true;
-      }
-
-      Parser::HppConfigurationType
-      Parser::getHppReferenceConfig (const std::string& groupName,
-				     const std::string& stateName)
-      {
-	// Retrieve joint name to dof map.
-	ConfigurationType jointToDof
-	  = getReferenceConfig (groupName, stateName);
-
-	// Retrieve robot joint vector.
-	std::vector <CkppJointComponentShPtr> joints;
-	robot_->getJointComponentVector (joints);
-
-	// Reserve first 6 dofs for free-floating. Their value will be
-	// set later.
-	HppConfigurationType hppConfig (robot_->numberDof (), 0.);
-	unsigned i = 6;
-
-	// Cycle through joint vector and add corresponding dof
-	// values to configuration vector.
-	BOOST_FOREACH (CkppJointComponentShPtr joint, joints)
-	  {
-	    ConfigurationType::iterator it = jointToDof.find (joint->name ());
-
-	    if (it != jointToDof.end ())
-	      {
-	    	std::vector<double> dofs = it->second;
-
-		std::string jointType;
-		if (!areDofsInJoint (dofs, joint->name (), jointType))
-		  {
-		    hppDout (error,
-			     "Number of joint dofs ("
-			     << dofs.size ()
-			     << ") is inconsistent with joint type ("
-			     << jointType << ") of "
-			     << joint->name ());
-		    hppConfig.clear ();
-		    return hppConfig;
-		  }
-
-	    	BOOST_FOREACH (double dof, dofs)
-	    	  {
-		    if (i == robot_->numberDof ())
-		      {
-			hppDout (error,
-				 "Incorrect number of dofs in configuration.");
-			hppConfig.clear ();
-			return hppConfig;
-		      }
-
-	    	    hppConfig[i] = dof;
-	    	    ++i;
-	    	  }
-	      }
-	    else
-	      if (joint->name ()!= "base_joint"
-		  && joint->kwsJoint ()->countDofs () != 0)
-	      {
-		hppDout (error, "Reference dof values for joint "
-			 << joint->name () << " not found.");
-		hppConfig[i] = 0;
-		++i;
-	      }
-	  }
-
-	// Use the actuated joints dof values to compute the
-	// free-flyer joint dof values.
-	// We make for now the strong assumption that the floor is
-	// flat and at a null height.
-	if (!computeFullConfiguration (hppConfig, true, 0.))
-	  {
-	    hppDout (error, "Could not compute full configuration.");
-	    hppConfig.clear ();
-	    return hppConfig;
-	  }
-
-	return hppConfig;
-      }
-
-      Parser::ConfigurationType
-      Parser::getReferenceConfig (const std::string& groupName,
-				  const std::string& stateName)
-      {
-	SRDFGroupStatesType groupStates = srdfModel_.getGroupStates ();
-
-	// Find group state by name.
-	BOOST_FOREACH (SRDFGroupStateType groupState, groupStates)
-	  {
-	    if (groupState.group_ == groupName
-		&& groupState.name_ == stateName)
-	      {
-		return groupState.joint_values_;
-	      }
-	  }
-
-	// Throw error if reference configuration is not found.
-	hppDout (error, "Reference configuration " << stateName
-		 << " in group " << groupName << " not found.");
-	ConfigurationType config;
-	return config;
-      }
-
-      bool
+      void
       Parser::parse (const std::string& robotResourceName,
 		     const std::string& semanticResourceName,
 		     Parser::RobotPtrType& robot)
@@ -438,10 +227,10 @@ namespace hpp
 	for (unsigned i = 0; i < semanticResource.size; ++i)
 	  semanticDescription[i] = semanticResource.data.get()[i];
 
-	return parseStream (robotDescription, semanticDescription, robot);
+	parseStream (robotDescription, semanticDescription, robot);
       }
 
-      bool
+      void
       Parser::parseStream (const std::string& robotDescription,
 			   const std::string& semanticDescription,
 			   Parser::RobotPtrType& robot)
@@ -451,35 +240,24 @@ namespace hpp
 	urdfModel_.clear ();
 	srdfModel_.clear ();
 	robot_ = robot;
-	colPairs_.clear ();
 
 	// Parse urdf model.
 	if (!urdfModel_.initString (robotDescription))
 	  {
-	    hppDout (error,
-		     "Failed to open URDF file."
-		     << " Is the filename location correct?");
-	    return false;
+	    throw std::runtime_error ("Failed to open URDF file:\n"+
+				      robotDescription);
 	  }
-	
+
 	// Parse srdf model.
 	if (!srdfModel_.initString (urdfModel_, semanticDescription))
 	  {
-	    hppDout (error, "Failed to open SRDF file."
-		     << " Is the filename location correct?");
-	    return false;
+	    throw std::runtime_error ("Failed to open SRDF file:\n"
+				      + semanticDescription);
 	  }
 
 	// Add collision pairs.
-	if (!addCollisionPairs ())
-	  {
-	    hppDout (error, "Failed to add collision pairs.");
-	    return false;
-	  }
-
-	return true;
+	addCollisionPairs ();
       }
-
     } // end of namespace srdf.
   } // end of namespace model.
 } // end of namespace  hpp.

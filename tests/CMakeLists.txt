@@ -1,8 +1,6 @@
-# Copyright 2012 
+# Copyright 2012, 2013, 2014 CNRS-LAAS
 #
-# Antonio El Khoury
-#
-# JRL/LAAS, CNRS/AIST
+# Author: Antonio El Khoury
 #
 # This file is part of hpp-model-urdf.
 # hpp-model-urdf is free software: you can redistribute it and/or modify
@@ -48,7 +46,6 @@ MACRO(ADD_TESTCASE NAME GENERATED)
   TARGET_LINK_LIBRARIES(${NAME}
     ${Boost_LIBRARIES}
     ${PROJECT_NAME})
-  PKG_CONFIG_USE_DEPENDENCY(${NAME} KineoController)
   PKG_CONFIG_USE_DEPENDENCY(${NAME} hpp-model)
   PKG_CONFIG_USE_DEPENDENCY(${NAME} srdfdom)
   PKG_CONFIG_USE_DEPENDENCY(${NAME} rcpdf)
@@ -57,5 +54,4 @@ ENDMACRO(ADD_TESTCASE)
 # Generated test.
 IF(TEST_WITH_ROMEO)
   ADD_TESTCASE(display-robot FALSE)
-  KINEO_STANDALONE(display-robot)
 ENDIF()

@@ -27,12 +27,8 @@
 # include <map>
 
 # include <srdfdom/model.h>
-
-# include <KineoModel/kppJointComponent.h>
-
-# include <hpp/geometry/component/capsule.hh>
-
 # include <hpp/model/humanoid-robot.hh>
+# include <hpp/model/urdf/parser.hh>
 
 namespace hpp
 {
@@ -47,23 +43,14 @@ namespace hpp
       {
       public:
 	typedef ::srdf::Model::DisabledCollision CollisionPairType;
-	typedef std::vector<CollisionPairType> CollisionPairsType;
-	typedef std::map<std::string, std::vector<double> > ConfigurationType;
+	typedef std::vector <CollisionPairType> CollisionPairsType;
+	typedef std::map <std::string, std::vector<double> > ConfigurationType;
 
 	typedef ::srdf::Model::GroupState SRDFGroupStateType;
-	typedef std::vector<SRDFGroupStateType> SRDFGroupStatesType;
+	typedef std::vector <SRDFGroupStateType> SRDFGroupStatesType;
 
-	typedef std::vector<CkwsJointShPtr> JointPtrsType;
-	typedef std::vector<CkcdObjectShPtr> ObjectPtrsType;
-
-	typedef vectorN HppConfigurationType;
-	typedef CkwsKCDBodyAdvanced BodyType;
-	typedef CkwsKCDBodyAdvancedShPtr BodyPtrType;
-	typedef hpp::geometry::component::Capsule CapsuleType;
-	typedef hpp::geometry::component::CapsuleShPtr CapsulePtrType;
-	typedef hpp::geometry::component::Segment SegmentType;
-	typedef hpp::geometry::component::SegmentShPtr SegmentPtrType;
-	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
+	typedef urdf::Parser::BodyType BodyType;
+	typedef urdf::Parser::RobotPtrType RobotPtrType;
 
 	/// \brief Default constructor.
 	explicit Parser ();
@@ -71,48 +58,7 @@ namespace hpp
 	virtual ~Parser ();
 
 	/// Display in output stream list of disabled collision pairs.
-	void
-	displayDisabledCollisionPairs (std::ostream& os);
-
-	/// Display in output stream list of added collision pairs.
-	void
-	displayAddedCollisionPairs (std::ostream& os);
-
-	/// Compute full configuration of the robot.
-	///
-	/// This method takes as argument a configuration containing
-	/// reference dof values for the actuated joints, places the
-	/// robot on the floor at a given height, and computes the
-	/// free-flyer joint dof values.
-	bool
-	computeFullConfiguration (HppConfigurationType& configuration,
-				  const bool isRightFootSupporting = true,
-				  const double& floorHeight = 0.);
-
-	/// Get reference configuration by name.
-	///
-	/// The returned configuration is a vector containing all the
-	/// dof values. One should make no assumption about the dof
-	/// order in the vector.
-	///
-	/// The only guarantee is that the configuration of the robot
-	/// will be correctly set if the returned configuration vector
-	/// is given as argument to
-	/// hpp::model::Device::hppSetCurrentConfig ().
-	HppConfigurationType
-	getHppReferenceConfig (const std::string& groupName,
-			       const std::string& stateName);
-
-	/// Get reference configuration from SRDF by name.
-	///
-	/// The returned configuration maps each joint name to a joint
-	/// vector. A joint vector contains the joint dof values.
-	///
-	/// \param groupName name of joints group
-	/// \param stateName name of state in group to retrieve
-	ConfigurationType
-	getReferenceConfig (const std::string& groupName,
-			    const std::string& stateName);
+	void displayDisabledCollisionPairs (std::ostream& os);
 
 	/// \brief Parse an URDF file and add semantic information to
 	/// humanoid robot.
@@ -132,36 +78,26 @@ namespace hpp
 	///
 	/// \param robotResourceName URDF resource name
 	/// \param semanticResourceName SRDF resource name
-	bool
-	parse (const std::string& robotResourceName,
-	       const std::string& semanticResourceName,
-	       RobotPtrType& robot);
+	void parse (const std::string& robotResourceName,
+		    const std::string& semanticResourceName,
+		    RobotPtrType& robot);
 
 	/// \brief Parse an SRDF sent as a stream and add semantic
 	/// information to humanoid robot.
 	///
 	/// \param robotDescription URDF stream
 	/// \param semanticDescription SRDF stream
-	bool
-	parseStream (const std::string& robotDescription,
-		     const std::string& semanticDescription,
-		     RobotPtrType& robot);
+	void parseStream (const std::string& robotDescription,
+			  const std::string& semanticDescription,
+			  RobotPtrType& robot);
 
       protected:
 	/// \brief Add collision pairs to robot.
-	bool
-	addCollisionPairs ();
+	void addCollisionPairs ();
 
 	/// \brief Check if given body pair is disabled.
-	bool
-	isCollisionPairDisabled (const std::string& bodyName_1,
-				 const std::string& bodyName_2);
-
-	/// \brief Check if given body pair has been already been
-	/// added.
-	bool
-	isCollisionPairAdded (const std::string& bodyName_1,
-			      const std::string& bodyName_2);
+	bool isCollisionPairDisabled (const std::string& bodyName_1,
+				      const std::string& bodyName_2);
 
 	/// \brief Check if dof vector is consistent with joint.
 	bool areDofsInJoint (const std::vector<double>& dofs,
@@ -172,7 +108,6 @@ namespace hpp
 	::urdf::Model urdfModel_;
 	::srdf::Model srdfModel_;
 	RobotPtrType robot_;
-	CollisionPairsType colPairs_;
 
       }; // class Parser
 

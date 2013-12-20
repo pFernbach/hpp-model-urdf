@@ -42,14 +42,13 @@ namespace hpp
       class Parser
       {
       public:
-	typedef boost::shared_ptr<rcpdf_interface::ModelInterface>
+	typedef boost::shared_ptr <rcpdf_interface::ModelInterface>
 	RcpdfModelPtrType;
-	typedef boost::shared_ptr<rcpdf_interface::Contact> ContactPtrType;
-	typedef std::vector<ContactPtrType> ContactPtrsType; 
-	typedef boost::shared_ptr<rcpdf_interface::Geometry> GeometryPtrType;
+	typedef boost::shared_ptr <rcpdf_interface::Contact> ContactPtrType;
+	typedef std::vector<ContactPtrType> ContactPtrsType;
+	typedef boost::shared_ptr <rcpdf_interface::Geometry> GeometryPtrType;
 	typedef std::pair<double, double> SoleDimensionsType;
 
-	typedef CjrlFoot* FootPtrType;
 	typedef hpp::model::HumanoidRobotShPtr RobotPtrType;
 
 	/// \brief Default constructor.
@@ -74,17 +73,15 @@ namespace hpp
 	/// resource_retriever format.
 	///
 	/// \param contactsResourceName RCPDF resource name
-	bool
-	parse (const std::string& contactsResourceName,
-	       RobotPtrType& robot);
+	void parse (const std::string& contactsResourceName,
+		    RobotPtrType& robot);
 
 	/// \brief Parse an RCPDF sent as a stream and add contact
 	/// information to humanoid robot.
 	///
 	/// \param contactsDescription RCPDF stream
-	bool
-	parseStream (const std::string& contactsDescription,
-		     RobotPtrType& robot);
+	void parseStream (const std::string& contactsDescription,
+			  RobotPtrType& robot);
 
       protected:
 	/// \brief Find contact by link name.
@@ -96,7 +93,7 @@ namespace hpp
 	computeSoleDimensions (const bool isRightSole);
 
 	/// \brief Set feet size by reading the feet contact points.
-	bool
+	void
 	setFeetSize ();
 
       private:

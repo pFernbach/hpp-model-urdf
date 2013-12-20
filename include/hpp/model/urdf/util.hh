@@ -32,12 +32,6 @@ namespace hpp
   {
     namespace urdf
     {
-      /// \brief Load polyhedron from resource.
-      bool
-      loadPolyhedronFromResource (const std::string& filename,
-				  const ::urdf::Vector3& scale,
-				  const CkppPolyhedronShPtr& polyhedron);
-
       /// Load robot model by name
       ///
       /// \param modelName robot model name
@@ -52,7 +46,7 @@ namespace hpp
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
       /// and \li
       /// package://${modelName}_description/rcpdf/${modelName}${rcpdfSuffix}.rcpdf
-      bool loadRobotModel (model::HumanoidRobotShPtr& device,
+      void loadRobotModel (model::HumanoidRobotShPtr& device,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix = "",
 			   const std::string& srdfSuffix = "",
