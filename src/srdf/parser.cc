@@ -28,7 +28,6 @@
 
 #include <urdf/model.h>
 
-#include <jrl/mal/matrixabstractlayer.hh>
 #include <hpp/util/assertion.hh>
 #include <hpp/util/debug.hh>
 #include <hpp/model/collision-object.hh>
