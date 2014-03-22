@@ -196,11 +196,12 @@ namespace hpp
       };
 
       using std::numeric_limits;
-      Parser::Parser ()
+      Parser::Parser (const std::string& rootJointType)
   : model_ (),
     robot_ (),
     rootJoint_ (),
     jointsMap_ (),
+    rootJointType_ (rootJointType),
     waistJointName_ (),
     chestJointName_ (),
     leftWristJointName_ (),
@@ -349,13 +350,30 @@ namespace hpp
 	}
       }
 
+      void Parser::createRootJoint (const std::string& name,
+				    const MatrixHomogeneousType& mat,
+				    DevicePtr_t robot)
+      {
+	if (rootJointType_ == "freeflyer") {
+	  createFreeflyerJoint (name, mat, robot);
+	} else if (rootJointType_ == "anchor") {
+	  createAnchorJoint (name, mat);
+	  robot->rootJoint (jointsMap_[name]);
+	} else if (rootJointType_ == "planar") {
+	  createPlanarJoint (name, mat, robot);
+	} else {
+	  throw std::runtime_error ("Root joint should be either, \"anchor\","
+				    "\"freeflyer\" of \"planar\"");
+	}
+      }
+
       void Parser::parseJoints ()
       {
 	// Create free floating joint.
 	// FIXME: position set to identity for now.
 	MatrixHomogeneousType position;
 	position.setIdentity ();
-	createFreeflyerJoint ("base_joint", position, robot_);
+	createRootJoint ("base_joint", position, robot_);
 
 	// Iterate through each "true kinematic" joint and create a
 	// corresponding hpp::model::Joint.
@@ -860,6 +878,69 @@ namespace hpp
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
 	parent->addChildJoint (joint);
+      }
+
+      void
+      Parser::createPlanarJoint (const std::string& name,
+				 const MatrixHomogeneousType& mat,
+				 DevicePtr_t robot)
+      {
+	JointPtr_t joint, parent;
+	const fcl::Vec3f T = mat.getTranslation ();
+	std::string jointName = name + "_x";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	// Translation along x
+	fcl::Matrix3f permutation;
+	joint = objectFactory_.createJointTranslation (mat);
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	if (robot)
+	  robot->rootJoint (joint);
+	parent = joint;
+
+	// Translation along y
+	permutation (0,0) = 0; permutation (0,1) = -1; permutation (0,2) = 0;
+	permutation (1,0) = 1; permutation (1,1) =  0; permutation (1,2) = 0;
+	permutation (2,0) = 0; permutation (2,1) =  0; permutation (2,2) = 1;
+	fcl::Transform3f pos;
+	pos.setRotation (permutation * mat.getRotation ());
+	pos.setTranslation (T);
+	joint = objectFactory_.createJointTranslation (pos);
+	jointName = name + "_y";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	parent->addChildJoint (joint);
+	parent = joint;
+
+	// Rotation along z
+	permutation (0,0) = 0; permutation (0,1) = 0; permutation (0,2) = -1;
+	permutation (1,0) = 0; permutation (1,1) = 1; permutation (1,2) =  0;
+	permutation (2,0) = 1; permutation (2,1) = 0; permutation (2,2) =  0;
+	pos.setRotation (permutation * mat.getRotation ());
+	pos.setTranslation (T);
+	joint = objectFactory_.createJointRotation (pos);
+	jointName = name + "_rz";
+	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
+	  throw std::runtime_error (std::string ("Duplicated joint") +
+				    name);
+	}
+	joint->name (jointName);
+	jointsMap_[jointName] = joint;
+	joint->lowerBound (0, -numeric_limits<double>::infinity());
+	joint->upperBound (0, +numeric_limits<double>::infinity());
+	parent->addChildJoint (joint);
+	parent = joint;
       }
 
       JointPtr_t

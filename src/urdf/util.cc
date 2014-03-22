@@ -31,11 +31,12 @@ namespace hpp
     {
       void
       loadRobotModel (model::HumanoidRobotShPtr& device,
+		      const std::string& rootJointType,
 		      const std::string& modelName,
 		      const std::string& urdfSuffix,
 		      const std::string& srdfSuffix)
       {
-	hpp::model::urdf::Parser urdfParser;
+	hpp::model::urdf::Parser urdfParser (rootJointType);
 	hpp::model::srdf::Parser srdfParser;
 
 	std::string urdfPath = "package://" + modelName + "_description/urdf/"

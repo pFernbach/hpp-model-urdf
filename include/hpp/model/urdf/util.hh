@@ -33,17 +33,19 @@ namespace hpp
     {
       /// Load robot model by name
       ///
+      /// \param rootJointType type of root joint among "anchor", "freeflyer",
+      /// "planar",
       /// \param modelName robot model name
       /// \param urdfSuffix suffix for urdf file
       /// \param srdfSuffix suffix for srdf file
-      /// \param rcpdfSuffix suffix for rcpdf file
-      ///
+
       /// \note This function reads the following files:
       /// \li
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
       void loadRobotModel (model::HumanoidRobotShPtr& device,
+			   const std::string& rootJointType,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix = "",
 			   const std::string& srdfSuffix = "");

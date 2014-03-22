@@ -70,7 +70,10 @@ namespace hpp
 	typedef std::map<std::string, UrdfJointPtrType> MapJointType;
 
 	/// \brief Default constructor.
-	explicit Parser ();
+	///
+	/// \param rootJointType type of root joint among "anchor", "freeflyer",
+	/// "planar",
+	explicit Parser (const std::string& rooJointType);
 	/// \brief Destructor.
 	virtual ~Parser ();
 
@@ -109,6 +112,11 @@ namespace hpp
 
 	/// \brief Set special joints in robot.
 	void setSpecialJoints ();
+
+	/// Create root joint of robot
+	void createRootJoint (const std::string& name,
+			      const MatrixHomogeneousType& mat,
+			      DevicePtr_t robot);
 
 	/// \brief Parse URDF model and get joints.
 	///
@@ -171,6 +179,11 @@ namespace hpp
 				   const MatrixHomogeneousType& mat,
 				   DevicePtr_t robot = DevicePtr_t ());
 
+	/// Create two translations and one rotation in horizontal plane.
+	void createPlanarJoint (const std::string& name,
+				const MatrixHomogeneousType& mat,
+				DevicePtr_t robot);
+
 	/// \brief Create rotation joint and add it to joints map.
 	JointPtr_t createRotationJoint (const std::string& name,
 					  const MatrixHomogeneousType& mat,
@@ -205,7 +218,7 @@ namespace hpp
 	RobotPtrType robot_;
 	JointPtr_t rootJoint_;
 	MapHppJointType jointsMap_;
-
+	std::string rootJointType_;
 	/// \brief Special joints names.
 	/// \{
 	std::string waistJointName_;
