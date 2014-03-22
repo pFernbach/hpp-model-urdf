@@ -33,19 +33,15 @@ namespace hpp
       loadRobotModel (model::HumanoidRobotShPtr& device,
 		      const std::string& modelName,
 		      const std::string& urdfSuffix,
-		      const std::string& srdfSuffix,
-		      const std::string& rcpdfSuffix)
+		      const std::string& srdfSuffix)
       {
 	hpp::model::urdf::Parser urdfParser;
 	hpp::model::srdf::Parser srdfParser;
-	hpp::model::rcpdf::Parser rcpdfParser;
 
 	std::string urdfPath = "package://" + modelName + "_description/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
 	std::string srdfPath = "package://" + modelName + "_description/srdf/"
 	  + modelName + srdfSuffix + ".srdf";
-	std::string rcpdfPath = "package://" + modelName + "_description/rcpdf/"
-	  + modelName + rcpdfSuffix + ".rcpdf";
 
 	// Build robot model from URDF.
 	device = urdfParser.parse (urdfPath);
@@ -54,12 +50,6 @@ namespace hpp
 	// Set Collision Check Pairs
 	srdfParser.parse (urdfPath, srdfPath, device);
 	hppDout (notice, "Finished parsing SRDF file.");
-
-	// Set contact point properties.
-	rcpdfParser.parse (rcpdfPath, device);
-	hppDout (notice, "Finished parsing RCPDF file.");
-	hppDout (info, "Robot " << device->name () << std::endl
-		 << *device);
       }
     } // end of namespace urdf.
   } // end of namespace model.

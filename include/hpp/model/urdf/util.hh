@@ -24,7 +24,6 @@
 
 #include <hpp/model/urdf/parser.hh>
 #include <hpp/model/srdf/parser.hh>
-#include <hpp/model/rcpdf/parser.hh>
 
 namespace hpp
 {
@@ -44,13 +43,10 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
-      /// and \li
-      /// package://${modelName}_description/rcpdf/${modelName}${rcpdfSuffix}.rcpdf
       void loadRobotModel (model::HumanoidRobotShPtr& device,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix = "",
-			   const std::string& srdfSuffix = "",
-			   const std::string& rcpdfSuffix = "");
+			   const std::string& srdfSuffix = "");
 
     } // end of namespace urdf.
   } // end of namespace model.

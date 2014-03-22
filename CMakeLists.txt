@@ -58,7 +58,6 @@ ADD_REQUIRED_DEPENDENCY("resource_retriever")
 ADD_REQUIRED_DEPENDENCY("urdf")
 ADD_REQUIRED_DEPENDENCY("urdfdom")
 ADD_REQUIRED_DEPENDENCY("srdfdom")
-ADD_REQUIRED_DEPENDENCY("rcpdf")
 
 IF (${TEST_WITH_ROMEO} STREQUAL ON)
   ADD_REQUIRED_DEPENDENCY ("romeo_description")
@@ -74,20 +73,12 @@ SET(${PROJECT_NAME}_SRDF_HEADERS
   include/hpp/model/srdf/parser.hh
   )
 
-SET(${PROJECT_NAME}_RCPDF_HEADERS
-  include/hpp/model/rcpdf/parser.hh
-  )
-
 INSTALL(FILES ${${PROJECT_NAME}_URDF_HEADERS}
   DESTINATION include/hpp/model/urdf
   )
 
 INSTALL(FILES ${${PROJECT_NAME}_SRDF_HEADERS}
   DESTINATION include/hpp/model/srdf
-  )
-
-INSTALL(FILES ${${PROJECT_NAME}_RCPDF_HEADERS}
-  DESTINATION include/hpp/model/rcpdf
   )
 
 PKG_CONFIG_APPEND_LIBS(${PROJECT_NAME})
