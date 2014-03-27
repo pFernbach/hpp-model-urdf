@@ -38,7 +38,7 @@ namespace hpp
     {
       /// \brief Parse an SRDF file to add semantic information
       /// (special configurations, collision pairs) to
-      /// an existing hpp::model::HumanoidRobotShPtr.
+      /// an existing hpp::model::HumanoidRobotPtr_t.
       class Parser
       {
       public:

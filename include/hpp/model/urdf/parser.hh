@@ -46,7 +46,7 @@ namespace hpp
     namespace urdf
     {
       /// \brief Parse an URDF file and return a
-      /// hpp::model::HumanoidRobotShPtr.
+      /// hpp::model::HumanoidRobotPtr_t.
       class Parser
       {
       public:
@@ -56,7 +56,7 @@ namespace hpp
 	typedef boost::shared_ptr <const ::urdf::Link> UrdfLinkConstPtrType;
 	typedef boost::shared_ptr <const ::urdf::Joint> UrdfJointConstPtrType;
 
-	typedef HumanoidRobotShPtr RobotPtrType;
+	typedef HumanoidRobotPtr_t RobotPtrType;
 	typedef Joint JointType;
 	typedef Body BodyType;
 	typedef fcl::BVHModel< fcl::RSS > PolyhedronType;
@@ -121,7 +121,7 @@ namespace hpp
 	/// \brief Parse URDF model and get joints.
 	///
 	/// Each joint in the URDF model is used to build the
-	/// corresponding hpp::model::JointShPtr object.
+	/// corresponding hpp::model::JointPtr_t object.
 	void parseJoints ();
 
 	/// \brief Connect recursively joints to their children.

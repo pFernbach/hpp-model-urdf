@@ -673,7 +673,7 @@ namespace hpp
 					     const JointPtr_t& joint)
       {
 	boost::shared_ptr < ::urdf::Collision> collision = link->collision;
-	fcl::CollisionGeometryShPtr geometry;
+	fcl::CollisionGeometryPtr_t geometry;
 
 	// Handle the case where collision geometry is a mesh
 	if (collision->geometry->type == ::urdf::Geometry::MESH) {
@@ -701,7 +701,7 @@ namespace hpp
 	  double length = collisionGeometry->length;
 
 	  // Create fcl capsule geometry.
-	  geometry = fcl::CollisionGeometryShPtr
+	  geometry = fcl::CollisionGeometryPtr_t
 	    (new fcl::Capsule (radius, length));
 	}
 
@@ -714,13 +714,13 @@ namespace hpp
 	  double y = collisionGeometry->dim.y;
 	  double z = collisionGeometry->dim.z;
 
-	  geometry = fcl::CollisionGeometryShPtr (new fcl::Box (x, y, z));
+	  geometry = fcl::CollisionGeometryPtr_t (new fcl::Box (x, y, z));
 	}
 	// Compute body position in world frame.
 	MatrixHomogeneousType position =
 	  computeBodyAbsolutePosition (link, collision->origin);
 	if (geometry) {
-	  CollisionObjectShPtr collisionObject
+	  CollisionObjectPtr_t collisionObject
 	    (new CollisionObject (geometry, position, link->name));
 
 	  // Add solid component.

@@ -30,7 +30,7 @@ namespace hpp
     namespace urdf
     {
       void
-      loadRobotModel (model::HumanoidRobotShPtr& device,
+      loadRobotModel (model::HumanoidRobotPtr_t& device,
 		      const std::string& rootJointType,
 		      const std::string& modelName,
 		      const std::string& urdfSuffix,

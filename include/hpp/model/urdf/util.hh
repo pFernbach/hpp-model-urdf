@@ -44,7 +44,7 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
-      void loadRobotModel (model::HumanoidRobotShPtr& device,
+      void loadRobotModel (model::HumanoidRobotPtr_t& device,
 			   const std::string& rootJointType,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix = "",
