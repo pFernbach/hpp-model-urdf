@@ -721,7 +721,7 @@ namespace hpp
 	  computeBodyAbsolutePosition (link, collision->origin);
 	if (geometry) {
 	  CollisionObjectPtr_t collisionObject
-	    (new CollisionObject (geometry, position, link->name));
+	    (CollisionObject::create (geometry, position, link->name));
 
 	  // Add solid component.
 	  Body* body = joint->linkedBody ();
