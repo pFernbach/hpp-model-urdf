@@ -95,31 +95,9 @@ namespace hpp
 		if (!isCollisionPairDisabled (bodyName1, bodyName2)) {
 		  hppDout (info, "Handling pair: ("  << bodyName1 << ","
 			   << bodyName2 << ")");
-		  // Add each inner object of body 1 as outer object of body 2
-		  const ObjectVector_t& collisionObjects =
-		    body1->innerObjects (COLLISION);
-		  hppDout (info, "Number of collision objects in body "
-			   << bodyName1 << ": " << collisionObjects.size ());
-		  for (ObjectVector_t::const_iterator itObj1 =
-			 collisionObjects.begin ();
-		       itObj1 != collisionObjects.end (); itObj1++) {
-		    body2->addOuterObject (*itObj1, true, false);
-		    hppDout (info, "Adding object " << (*itObj1)->name ()
-			     << " to body " << body2->name ()
-			     << " for collision");
-		  }
-		  const ObjectVector_t& distanceObjects =
-		    body1->innerObjects (DISTANCE);
-		  hppDout (info, "Number of distance objects in body "
-			   << bodyName1 << ": " << distanceObjects.size ());
-		  for (ObjectVector_t::const_iterator itObj1 =
-			 distanceObjects.begin ();
-		       itObj1 != distanceObjects.end (); itObj1++) {
-		    body2->addOuterObject (*itObj1, false, true);
-		    hppDout (info, "Adding object " << (*itObj1)->name ()
-			     << " to body " << body2->name ()
-			     << " for distance");
-		  }
+
+		  robot_->addCollisionPairs (joint1, joint2, COLLISION);
+		  robot_->addCollisionPairs (joint1, joint2, DISTANCE);
 		}
 	      }
 	    }
