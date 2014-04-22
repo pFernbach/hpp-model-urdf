@@ -50,6 +50,21 @@ namespace hpp
 			   const std::string& urdfSuffix = "",
 			   const std::string& srdfSuffix = "");
 
+      /// Load only urdf model file
+      ///
+      /// \param rootJointType type of root joint among "anchor", "freeflyer",
+      /// "planar",
+      /// \param modelName robot model name
+      /// \param urdfSuffix suffix for urdf file
+
+      /// \note This function reads the following files:
+      /// \li
+      /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
+      void loadUrdfModel (model::HumanoidRobotPtr_t& device,
+			  const std::string& rootJointType,
+			  const std::string& modelName,
+			  const std::string& urdfSuffix = "");
+
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace hpp.

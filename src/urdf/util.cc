@@ -52,6 +52,22 @@ namespace hpp
 	srdfParser.parse (urdfPath, srdfPath, device);
 	hppDout (notice, "Finished parsing SRDF file.");
       }
+
+      void
+      loadUrdfModel (model::HumanoidRobotPtr_t& device,
+		     const std::string& rootJointType,
+		     const std::string& modelName,
+		     const std::string& urdfSuffix)
+      {
+	hpp::model::urdf::Parser urdfParser (rootJointType);
+
+	std::string urdfPath = "package://" + modelName + "_description/urdf/"
+	  + modelName + urdfSuffix + ".urdf";
+
+	// Build robot model from URDF.
+	device = urdfParser.parse (urdfPath);
+	hppDout (notice, "Finished parsing URDF file.");
+      }
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace  hpp.
