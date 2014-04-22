@@ -356,11 +356,14 @@ namespace hpp
       {
 	if (rootJointType_ == "freeflyer") {
 	  createFreeflyerJoint (name, mat, robot);
+	  rootJoint_ = jointsMap_ [name + "_SO3"];
 	} else if (rootJointType_ == "anchor") {
 	  createAnchorJoint (name, mat);
+	  rootJoint_ = jointsMap_ [name];
 	  robot->rootJoint (jointsMap_[name]);
 	} else if (rootJointType_ == "planar") {
 	  createPlanarJoint (name, mat, robot);
+	  rootJoint_ = jointsMap_ [name + "_rz"];
 	} else {
 	  throw std::runtime_error ("Root joint should be either, \"anchor\","
 				    "\"freeflyer\" of \"planar\"");
@@ -446,13 +449,18 @@ namespace hpp
 
 	  // Retrieve joint name.
 	  std::string childLinkName;
-	  if (it->first == "base_joint")
-	    childLinkName = "base_link";
-	  else
+	  UrdfLinkConstPtrType link;
+	  if (it->first == "base_joint") {
+	    // Get root link
+	    link = model_.getRoot ();
+	    childLinkName = link->name;
+	  }
+	  else {
 	    childLinkName = joint->child_link_name;
+	    // Get child link.
+	    link = model_.getLink (childLinkName);
+	  }
 
-	  // Get child link.
-	  UrdfLinkConstPtrType link = model_.getLink (childLinkName);
 	  if (!link) {
 	    throw std::runtime_error (std::string ("Link ") + childLinkName +
 				      std::string
@@ -543,7 +551,7 @@ namespace hpp
 	MatrixHomogeneousType linkPositionInParentJoint = poseToMatrix (pose);
 
 	MatrixHomogeneousType parentJointInWorld;
-	if (link->name == "base_link") {
+	if (link == model_.getRoot ()) {
 	  parentJointInWorld =
 	    findJoint ("base_joint")->currentTransformation ();
 	}
@@ -552,7 +560,7 @@ namespace hpp
 	    findJoint (link->parent_joint->name)->currentTransformation ();
 	}
 	// Denormalize orientation if this is an actuated joint.
-	if (link->name == "base_link")
+	if (link == model_.getRoot ())
 	  {}
 	else
 	  if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
@@ -769,16 +777,15 @@ namespace hpp
 	boost::shared_ptr <const ::urdf::Joint> joint =
 	  model_.getJoint (jointName);
 
-	if (!joint && jointName != "base_joint_SO3")
-	  {
-	    hppDout (error, "Failed to retrieve children joints of joint "
-		     << jointName);
-	    return false;
-	  }
+	if (!joint && jointName.compare (0, 10, "base_joint") != 0) {
+	  hppDout (error, "Failed to retrieve children joints of joint "
+		   << jointName);
+	  return false;
+	}
 
 	boost::shared_ptr <const ::urdf::Link> childLink;
-	if (jointName == "base_joint_SO3")
-	  childLink = model_.getLink ("base_link");
+	if (jointName.compare (0, 10, "base_joint") == 0)
+	  childLink = model_.getRoot ();
 	else
 	  childLink = model_.getLink (joint->child_link_name);
 
@@ -1156,19 +1163,17 @@ namespace hpp
 	    return robot_;
 	  }
 
-	connectJoints (jointsMap_ ["base_joint_SO3"]);
-	// Look for special joints and attach them to the model.
-	setSpecialJoints ();
-
+	connectJoints (rootJoint_);
 	// Add corresponding body (link) to each joint.
 	addBodiesToJoints ();
 
-	// Fill gaze position and direction.
-	fillGaze ();
-
-	Configuration_t q (robot_->configSize ()); q.setZero ();
-	q [3] = 1;
-	robot_->currentConfiguration (q);
+	// If root joint is freeflyer, set quaternion part of configuration to
+	// 1.
+	if (rootJointType_ == "freeflyer") {
+	  Configuration_t q (robot_->configSize ()); q.setZero ();
+	  q [3] = 1;
+	  robot_->currentConfiguration (q);
+	}
 	//Set bounds on freeflyer dofs
 	return robot_;
       }

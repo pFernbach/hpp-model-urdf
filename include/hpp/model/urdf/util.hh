@@ -54,16 +54,16 @@ namespace hpp
       ///
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
-      /// \param modelName robot model name
-      /// \param urdfSuffix suffix for urdf file
+      /// \param package ros package containing the model
+      /// \param filename name of the file containing the model.
 
-      /// \note This function reads the following files:
+      /// \note This function reads the following file:
       /// \li
-      /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
-      void loadUrdfModel (model::HumanoidRobotPtr_t& device,
+      /// package://${package}/urdf/${filename}.urdf
+      void loadUrdfModel (model::DevicePtr_t& device,
 			  const std::string& rootJointType,
-			  const std::string& modelName,
-			  const std::string& urdfSuffix = "");
+			  const std::string& package,
+			  const std::string& filename);
 
     } // end of namespace urdf.
   } // end of namespace model.

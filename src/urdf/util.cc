@@ -47,6 +47,11 @@ namespace hpp
 	// Build robot model from URDF.
 	device = urdfParser.parse (urdfPath);
 	hppDout (notice, "Finished parsing URDF file.");
+	// Look for special joints and attach them to the model.
+	urdfParser.setSpecialJoints ();
+	// Fill gaze position and direction.
+	urdfParser.fillGaze ();
+
 
 	// Set Collision Check Pairs
 	srdfParser.parse (urdfPath, srdfPath, device);
@@ -54,15 +59,15 @@ namespace hpp
       }
 
       void
-      loadUrdfModel (model::HumanoidRobotPtr_t& device,
+      loadUrdfModel (model::DevicePtr_t& device,
 		     const std::string& rootJointType,
-		     const std::string& modelName,
-		     const std::string& urdfSuffix)
+		     const std::string& package,
+		     const std::string& filename)
       {
 	hpp::model::urdf::Parser urdfParser (rootJointType);
 
-	std::string urdfPath = "package://" + modelName + "_description/urdf/"
-	  + modelName + urdfSuffix + ".urdf";
+	std::string urdfPath = "package://" + package + "/urdf/"
+	  + filename + ".urdf";
 
 	// Build robot model from URDF.
 	device = urdfParser.parse (urdfPath);

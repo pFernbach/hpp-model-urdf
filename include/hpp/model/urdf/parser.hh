@@ -97,6 +97,11 @@ namespace hpp
 	RobotPtrType
 	parseStream (const std::string& robotDescription);
 
+	/// \brief Set special joints in robot.
+	void setSpecialJoints ();
+	/// \brief Fill gaze.
+	void fillGaze ();
+
       private:
 	/// \brief Retrieve joint name attached to a particular link.
 	void findSpecialJoint (const std::string& linkName,
@@ -109,9 +114,6 @@ namespace hpp
 	/// We have to use the REP naming standard to identify the
 	/// links and then retrieve the attached joints name.
 	void findSpecialJoints ();
-
-	/// \brief Set special joints in robot.
-	void setSpecialJoints ();
 
 	/// Create root joint of robot
 	void createRootJoint (const std::string& name,
@@ -160,9 +162,6 @@ namespace hpp
 	/// are used to create the appropriate FCL geometry.
 	void addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
 				       const JointPtr_t& joint);
-
-	/// \brief Fill gaze.
-	void fillGaze ();
 
 	// returns, in a vector, the children of a joint, or a
 	// subchildren if no children si present in the actuated
