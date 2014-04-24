@@ -196,9 +196,10 @@ namespace hpp
       };
 
       using std::numeric_limits;
-      Parser::Parser (const std::string& rootJointType)
+      Parser::Parser (const std::string& rootJointType,
+		      const RobotPtrType& robot)
   : model_ (),
-    robot_ (),
+    robot_ (robot),
     rootJoint_ (),
     jointsMap_ (),
     rootJointType_ (rootJointType),
@@ -313,38 +314,43 @@ namespace hpp
       void
       Parser::setSpecialJoints ()
       {
+	HumanoidRobotPtr_t robot = HPP_DYNAMIC_PTR_CAST (HumanoidRobot,
+							 robot_);
+	if (!robot) {
+	  throw std::runtime_error ("Robot is not a humanoid");
+	}
 	try {
-	  robot_->waist (findJoint (waistJointName_));
+	  robot->waist (findJoint (waistJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No waist joint found");
 	}
 	try {
-	  robot_->chest (findJoint (chestJointName_));
+	  robot->chest (findJoint (chestJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No chest joint found");
 	}
 	try {
-	  robot_->leftWrist (findJoint (leftWristJointName_));
+	  robot->leftWrist (findJoint (leftWristJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No left wrist joint found");
 	}
 	try {
-	  robot_->rightWrist (findJoint (rightWristJointName_));
+	  robot->rightWrist (findJoint (rightWristJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No right wrist joint found");
 	}
 	try {
-	  robot_->leftAnkle (findJoint (leftAnkleJointName_));
+	  robot->leftAnkle (findJoint (leftAnkleJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No left ankle joint found");
 	}
 	try {
-	  robot_->rightAnkle (findJoint (rightAnkleJointName_));
+	  robot->rightAnkle (findJoint (rightAnkleJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No right ankle joint found");
 	}
 	try {
-	  robot_->gazeJoint (findJoint (gazeJointName_));
+	  robot->gazeJoint (findJoint (gazeJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No gaze joint found");
 	}
@@ -742,10 +748,15 @@ namespace hpp
 
       void Parser::fillGaze ()
       {
+	HumanoidRobotPtr_t robot = HPP_DYNAMIC_PTR_CAST (HumanoidRobot,
+							 robot_);
+	if (!robot) {
+	  throw std::runtime_error ("Robot is not a humanoid");
+	}
 	MapHppJointType::const_iterator gaze =
 	  jointsMap_.find (gazeJointName_);
 	JointPtr_t gazeJoint = gaze->second;
-	robot_->gazeJoint (gazeJoint);
+	robot->gazeJoint (gazeJoint);
 	vector3_t dir, origin;
 	// Gaze direction is defined by the gaze joint local
 	// orientation.
@@ -757,7 +768,7 @@ namespace hpp
 	origin[0] = 0;
 	origin[1] = 0;
 	origin[2] = 0;
-	robot_->gaze (dir, origin);
+	robot->gaze (dir, origin);
       }
 
       std::vector<std::string>
@@ -1113,8 +1124,7 @@ namespace hpp
 	return transform;
       }
 
-      Parser::RobotPtrType
-      Parser::parse (const std::string& filename)
+      void Parser::parse (const std::string& filename)
       {
 	hppDout (info, "filename: " << filename);
 	resource_retriever::Retriever resourceRetriever;
@@ -1126,16 +1136,14 @@ namespace hpp
 	unsigned i = 0;
 	for (; i < resource.size; ++i)
 	  robotDescription[i] = resource.data.get()[i];
-	return parseStream (robotDescription);
+	parseStream (robotDescription);
       }
 
-      Parser::RobotPtrType
-      Parser::parseStream (const std::string& robotDescription)
+      void Parser::parseStream (const std::string& robotDescription)
       {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
 	model_.clear ();
-	robot_ = hpp::model::HumanoidRobot::create (model_.getName ());
 	rootJoint_ = 0;
 	jointsMap_.clear ();
 
@@ -1159,8 +1167,7 @@ namespace hpp
 	if (!rootLink)
 	  {
 	    hppDout (error, "URDF model is missing a root link");
-	    robot_.reset ();
-	    return robot_;
+	    throw std::runtime_error ("URDF model is missing a root link");
 	  }
 
 	connectJoints (rootJoint_);
@@ -1174,8 +1181,6 @@ namespace hpp
 	  q [3] = 1;
 	  robot_->currentConfiguration (q);
 	}
-	//Set bounds on freeflyer dofs
-	return robot_;
       }
 
     } // end of namespace urdf.

@@ -80,7 +80,7 @@ namespace hpp
 	/// \param semanticResourceName SRDF resource name
 	void parse (const std::string& robotResourceName,
 		    const std::string& semanticResourceName,
-		    RobotPtrType& robot);
+		    RobotPtrType robot);
 
 	/// \brief Parse an SRDF sent as a stream and add semantic
 	/// information to humanoid robot.

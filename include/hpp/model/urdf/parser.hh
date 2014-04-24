@@ -56,7 +56,7 @@ namespace hpp
 	typedef boost::shared_ptr <const ::urdf::Link> UrdfLinkConstPtrType;
 	typedef boost::shared_ptr <const ::urdf::Joint> UrdfJointConstPtrType;
 
-	typedef HumanoidRobotPtr_t RobotPtrType;
+	typedef DevicePtr_t RobotPtrType;
 	typedef Joint JointType;
 	typedef Body BodyType;
 	typedef fcl::BVHModel< fcl::RSS > PolyhedronType;
@@ -73,7 +73,8 @@ namespace hpp
 	///
 	/// \param rootJointType type of root joint among "anchor", "freeflyer",
 	/// "planar",
-	explicit Parser (const std::string& rooJointType);
+	explicit Parser (const std::string& rooJointType,
+			 const RobotPtrType& robot);
 	/// \brief Destructor.
 	virtual ~Parser ();
 
@@ -89,13 +90,11 @@ namespace hpp
 	///
 	/// \param resourceName resource name using the
 	/// resource_retriever format.
-	RobotPtrType
-	parse (const std::string& resourceName);
+	void parse (const std::string& resourceName);
 
 	/// \brief Parse an URDF sent as a stream and return a
 	/// humanoid robot.
-	RobotPtrType
-	parseStream (const std::string& robotDescription);
+	void parseStream (const std::string& robotDescription);
 
 	/// \brief Set special joints in robot.
 	void setSpecialJoints ();
@@ -214,7 +213,7 @@ namespace hpp
 	 const std::string& currentJointName);
 
 	::urdf::Model model_;
-	RobotPtrType robot_;
+	const RobotPtrType robot_;
 	JointPtr_t rootJoint_;
 	MapHppJointType jointsMap_;
 	std::string rootJointType_;

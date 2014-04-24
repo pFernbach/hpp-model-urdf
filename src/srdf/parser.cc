@@ -186,7 +186,7 @@ namespace hpp
       void
       Parser::parse (const std::string& robotResourceName,
 		     const std::string& semanticResourceName,
-		     Parser::RobotPtrType& robot)
+		     Parser::RobotPtrType robot)
       {
 	resource_retriever::Retriever resourceRetriever;
 
