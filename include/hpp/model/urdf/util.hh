@@ -35,6 +35,7 @@ namespace hpp
       ///
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
+      /// \param package ros package containing the model
       /// \param modelName robot model name
       /// \param urdfSuffix suffix for urdf file
       /// \param srdfSuffix suffix for srdf file
@@ -46,6 +47,7 @@ namespace hpp
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
       void loadRobotModel (model::HumanoidRobotPtr_t& device,
 			   const std::string& rootJointType,
+			   const std::string& package,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix = "",
 			   const std::string& srdfSuffix = "");

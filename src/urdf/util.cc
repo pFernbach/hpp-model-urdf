@@ -32,6 +32,7 @@ namespace hpp
       void
       loadRobotModel (model::HumanoidRobotPtr_t& device,
 		      const std::string& rootJointType,
+		      const std::string& package,
 		      const std::string& modelName,
 		      const std::string& urdfSuffix,
 		      const std::string& srdfSuffix)
@@ -39,9 +40,9 @@ namespace hpp
 	hpp::model::urdf::Parser urdfParser (rootJointType);
 	hpp::model::srdf::Parser srdfParser;
 
-	std::string urdfPath = "package://" + modelName + "_description/urdf/"
+	std::string urdfPath = "package://" + package + "/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
-	std::string srdfPath = "package://" + modelName + "_description/srdf/"
+	std::string srdfPath = "package://" + package + "/srdf/"
 	  + modelName + srdfSuffix + ".srdf";
 
 	// Build robot model from URDF.
