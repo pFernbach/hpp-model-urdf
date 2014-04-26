@@ -18,8 +18,6 @@
 
 /// \mainpage
 ///
-/// This package implements an urdf parser that build an instance of
-/// hpp::model::HumanoidRobot.
-///
-/// See function hpp::model::urdf::loadRobotModel for details about how to
-/// load a robot model.
+/// This package implements a urdf/srdf parser that build an instances of
+/// \li robots, see function hpp::model::urdf::loadRobotModel,
+/// \li humanoid robot, see function hpp::model::urdf::loadHumanoidModel.
