@@ -29,15 +29,13 @@ namespace hpp
   {
     namespace urdf
     {
-      model::DevicePtr_t
-      loadRobotModel (const std::string& robotName,
-		      const std::string& rootJointType,
-		      const std::string& package,
-		      const std::string& modelName,
-		      const std::string& urdfSuffix,
-		      const std::string& srdfSuffix)
+      void loadRobotModel (const DevicePtr_t& robot,
+			   const std::string& rootJointType,
+			   const std::string& package,
+			   const std::string& modelName,
+			   const std::string& urdfSuffix,
+			   const std::string& srdfSuffix)
       {
-	model::DevicePtr_t robot (model::Device::create (robotName));
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
 	hpp::model::srdf::Parser srdfParser;
 
@@ -52,19 +50,15 @@ namespace hpp
 	// Set Collision Check Pairs
 	srdfParser.parse (urdfPath, srdfPath, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
-	return robot;
       }
 
-      model::HumanoidRobotPtr_t
-      loadHumanoidModel (const std::string& robotName,
-			 const std::string& rootJointType,
-			 const std::string& package,
-			 const std::string& modelName,
-			 const std::string& urdfSuffix,
-			 const std::string& srdfSuffix)
+      void loadHumanoidModel (const model::HumanoidRobotPtr_t& robot,
+			      const std::string& rootJointType,
+			      const std::string& package,
+			      const std::string& modelName,
+			      const std::string& urdfSuffix,
+			      const std::string& srdfSuffix)
       {
-	model::HumanoidRobotPtr_t robot
-	  (model::HumanoidRobot::create (robotName));
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
 	hpp::model::srdf::Parser srdfParser;
 
@@ -85,16 +79,13 @@ namespace hpp
 	// Set Collision Check Pairs
 	srdfParser.parse (urdfPath, srdfPath, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
-	return robot;
       }
 
-      model::DevicePtr_t
-      loadUrdfModel (const std::string& robotName,
-		     const std::string& rootJointType,
-		     const std::string& package,
-		     const std::string& filename)
+      void loadUrdfModel (const DevicePtr_t& robot,
+			  const std::string& rootJointType,
+			  const std::string& package,
+			  const std::string& filename)
       {
-	model::DevicePtr_t robot (model::Device::create (robotName));
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
@@ -103,7 +94,6 @@ namespace hpp
 	// Build robot model from URDF.
 	urdfParser.parse (urdfPath);
 	hppDout (notice, "Finished parsing URDF file.");
-	return robot;
       }
     } // end of namespace urdf.
   } // end of namespace model.

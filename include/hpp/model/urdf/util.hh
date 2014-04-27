@@ -33,7 +33,8 @@ namespace hpp
     {
       /// Load robot model by name
       ///
-      /// \param name of the resulting robot
+      /// \param robot Empty robot created before calling the function.
+      ///        Users can pass an instance of a class deriving from Device.
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -46,17 +47,18 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
-      model::DevicePtr_t
-      loadRobotModel (const std::string& robotName,
-		      const std::string& rootJointType,
-		      const std::string& package,
-		      const std::string& modelName,
-		      const std::string& urdfSuffix = "",
-		      const std::string& srdfSuffix = "");
+      void loadRobotModel (const DevicePtr_t& robot,
+			   const std::string& rootJointType,
+			   const std::string& package,
+			   const std::string& modelName,
+			   const std::string& urdfSuffix,
+			   const std::string& srdfSuffix);
 
       /// Load humanoid robot model by name
       ///
-      /// \param name of the resulting robot
+      /// \param robot Empty robot created before calling the function.
+      ///        Users can pass an instance of a class deriving from
+      ///        HumanoidRobot.
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -69,17 +71,17 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
-      model::HumanoidRobotPtr_t
-      loadHumanoidModel (const std::string& robotName,
-			 const std::string& rootJointType,
-			 const std::string& package,
-			 const std::string& modelName,
-			 const std::string& urdfSuffix = "",
-			 const std::string& srdfSuffix = "");
+      void loadHumanoidModel (const model::HumanoidRobotPtr_t& robot,
+			      const std::string& rootJointType,
+			      const std::string& package,
+			      const std::string& modelName,
+			      const std::string& urdfSuffix,
+			      const std::string& srdfSuffix);
 
       /// Load only urdf model file
       ///
-      /// \param name of the resulting robot
+      /// \param robot Empty robot created before calling the function.
+      ///        Users can pass an instance of a class deriving from Device.
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -88,11 +90,10 @@ namespace hpp
       /// \note This function reads the following file:
       /// \li
       /// package://${package}/urdf/${filename}.urdf
-      model::DevicePtr_t
-      loadUrdfModel (const std::string& robotName,
-		     const std::string& rootJointType,
-		     const std::string& package,
-		     const std::string& filename);
+      void loadUrdfModel (const DevicePtr_t& robot,
+			  const std::string& rootJointType,
+			  const std::string& package,
+			  const std::string& filename);
 
     } // end of namespace urdf.
   } // end of namespace model.
