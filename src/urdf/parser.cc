@@ -203,7 +203,7 @@ namespace hpp
     rootJoint_ (),
     jointsMap_ (),
     rootJointType_ (rootJointType),
-    waistJointName_ (),
+    rootJointName_ (),
     chestJointName_ (),
     leftWristJointName_ (),
     rightWristJointName_ (),
@@ -297,7 +297,7 @@ namespace hpp
       void
       Parser::findSpecialJoints ()
       {
-	waistJointName_ = "base_joint_x";
+	rootJointName_ = "base_joint_SO3";
 	findSpecialJoint ("torso", chestJointName_);
 	findSpecialJoint ("l_wrist", leftWristJointName_);
 	findSpecialJoint ("r_wrist", rightWristJointName_);
@@ -320,7 +320,7 @@ namespace hpp
 	  throw std::runtime_error ("Robot is not a humanoid");
 	}
 	try {
-	  robot->waist (findJoint (waistJointName_));
+	  robot->waist (findJoint (rootJointName_));
 	} catch (const std::exception&) {
 	  hppDout (notice, "No waist joint found");
 	}
@@ -362,14 +362,17 @@ namespace hpp
       {
 	if (rootJointType_ == "freeflyer") {
 	  createFreeflyerJoint (name, mat, robot);
-	  rootJoint_ = jointsMap_ [name + "_SO3"];
+	  rootJointName_ = name + "_SO3";
+	  rootJoint_ = jointsMap_ [rootJointName_];
 	} else if (rootJointType_ == "anchor") {
 	  createAnchorJoint (name, mat);
-	  rootJoint_ = jointsMap_ [name];
-	  robot->rootJoint (jointsMap_[name]);
+	  rootJointName_ = name;
+	  rootJoint_ = jointsMap_ [rootJointName_];
+	  robot->rootJoint (rootJoint_);
 	} else if (rootJointType_ == "planar") {
 	  createPlanarJoint (name, mat, robot);
-	  rootJoint_ = jointsMap_ [name + "_rz"];
+	  rootJointName_ = name + "_rz";
+	  rootJoint_ = jointsMap_ [rootJointName_];
 	} else {
 	  throw std::runtime_error ("Root joint should be either, \"anchor\","
 				    "\"freeflyer\" of \"planar\"");
@@ -450,13 +453,13 @@ namespace hpp
 	    it != jointsMap_.end(); ++it) {
 	  // Retrieve associated URDF joint.
 	  UrdfJointConstPtrType joint = model_.getJoint (it->first);
-	  if (!joint && it->first != "base_joint")
+	  if (!joint && it->first != rootJointName_)
 	    continue;
 
 	  // Retrieve joint name.
 	  std::string childLinkName;
 	  UrdfLinkConstPtrType link;
-	  if (it->first == "base_joint") {
+	  if (it->first == rootJointName_) {
 	    // Get root link
 	    link = model_.getRoot ();
 	    childLinkName = link->name;
@@ -500,7 +503,7 @@ namespace hpp
 
 	    // Use joint normalization to properly reorient
 	    // inertial frames.
-	    if (it->first == "base_joint") {}
+	    if (it->first == rootJointName_) {}
 	    else
 	      if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
 		  || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
@@ -558,8 +561,7 @@ namespace hpp
 
 	MatrixHomogeneousType parentJointInWorld;
 	if (link == model_.getRoot ()) {
-	  parentJointInWorld =
-	    findJoint ("base_joint")->currentTransformation ();
+	  parentJointInWorld = rootJoint_->currentTransformation ();
 	}
 	else {
 	  parentJointInWorld =

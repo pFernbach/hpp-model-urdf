@@ -219,7 +219,8 @@ namespace hpp
 	std::string rootJointType_;
 	/// \brief Special joints names.
 	/// \{
-	std::string waistJointName_;
+	/// Name of the root joint (holding the first link)
+	std::string rootJointName_;
 	std::string chestJointName_;
 	std::string leftWristJointName_;
 	std::string rightWristJointName_;
