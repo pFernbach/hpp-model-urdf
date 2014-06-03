@@ -1018,8 +1018,8 @@ namespace hpp
 				    name);
 	}
 
-	joint = objectFactory_.createJointTranslation
-	  (mat);
+	joint = objectFactory_.createJointTranslation (mat);
+	joint->name (name);
 	if (limits) {
 	  joint->isBounded (0, true);
 	  joint->lowerBound (0, limits->lower);
