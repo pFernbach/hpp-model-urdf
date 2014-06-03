@@ -168,7 +168,7 @@ namespace hpp
 	std::vector<std::string> getChildrenJoint
 	(const std::string& jointName);
 
-	bool getChildrenJoint (const std::string& jointName,
+	void getChildrenJoint (const std::string& jointName,
 			       std::vector<std::string>& result);
 
 	/// Create free-flyer joints and add them to joints map.

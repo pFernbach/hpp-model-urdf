@@ -781,7 +781,7 @@ namespace hpp
 	return result;
       }
 
-      bool
+      void
       Parser::getChildrenJoint (const std::string& jointName,
 				std::vector<std::string>& result)
       {
@@ -791,9 +791,9 @@ namespace hpp
 	  model_.getJoint (jointName);
 
 	if (!joint && jointName.compare (0, 10, "base_joint") != 0) {
-	  hppDout (error, "Failed to retrieve children joints of joint "
-		   << jointName);
-	  return false;
+	  std::string msg ("Failed to retrieve children joints of joint ");
+	  msg += std::string (jointName);
+	  throw std::runtime_error (msg);
 	}
 
 	boost::shared_ptr <const ::urdf::Link> childLink;
@@ -804,8 +804,9 @@ namespace hpp
 
 	if (!childLink)
 	  {
-	    hppDout (error, "Failed to retrieve children link of joint "
-		     << jointName);
+	    std::string msg ("Failed to retrieve children link of joint ");
+	    msg += std::string (jointName);
+	    throw std::runtime_error (msg);
 	  }
 
 	const std::vector<jointPtr_t>& jointChildren =
@@ -816,15 +817,8 @@ namespace hpp
 	    if (jointsMap_.count(joint->name) > 0)
 	      result.push_back (joint->name);
 	    else
-	      if (!getChildrenJoint (joint->name, result))
-		{
-		  hppDout (error, "Could not add children joint to joint "
-			   << joint->name);
-		  return false;
-		}
+	      getChildrenJoint (joint->name, result);
 	  }
-
-	return true;
       }
 
       void
