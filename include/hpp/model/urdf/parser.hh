@@ -59,7 +59,7 @@ namespace hpp
 	typedef DevicePtr_t RobotPtrType;
 	typedef Joint JointType;
 	typedef Body BodyType;
-	typedef fcl::BVHModel< fcl::RSS > PolyhedronType;
+	typedef fcl::BVHModel< fcl::OBB > PolyhedronType;
 	typedef boost::shared_ptr <PolyhedronType> PolyhedronPtrType;
 
 	typedef Transform3f MatrixHomogeneousType;
