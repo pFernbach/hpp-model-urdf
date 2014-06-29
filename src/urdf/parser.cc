@@ -1170,13 +1170,13 @@ namespace hpp
 	// Add corresponding body (link) to each joint.
 	addBodiesToJoints ();
 
+	Configuration_t q (robot_->configSize ()); q.setZero ();
 	// If root joint is freeflyer, set quaternion part of configuration to
 	// 1.
 	if (rootJointType_ == "freeflyer") {
-	  Configuration_t q (robot_->configSize ()); q.setZero ();
 	  q [3] = 1;
-	  robot_->currentConfiguration (q);
 	}
+	robot_->currentConfiguration (q);
       }
 
     } // end of namespace urdf.
