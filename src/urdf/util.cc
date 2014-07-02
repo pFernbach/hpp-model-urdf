@@ -81,6 +81,43 @@ namespace hpp
 	hppDout (notice, "Finished parsing SRDF file.");
       }
 
+      void loadRobotModelFromParameter (const DevicePtr_t& robot,
+					const std::string& rootJointType,
+					const std::string& urdfParameter,
+					const std::string& srdfParameter)
+      {
+	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
+	hpp::model::srdf::Parser srdfParser;
+
+	// Build robot model from URDF.
+	urdfParser.parseFromParameter (urdfParameter);
+	hppDout (notice, "Finished parsing URDF file.");
+	// Set Collision Check Pairs
+	srdfParser.parseFromParameter (urdfParameter, srdfParameter, robot);
+	hppDout (notice, "Finished parsing SRDF file.");
+      }
+
+      void loadHumanoidModelFromParameter
+      (const model::HumanoidRobotPtr_t& robot,
+       const std::string& rootJointType,
+       const std::string& urdfParameter,
+       const std::string& srdfParameter)
+      {
+	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
+	hpp::model::srdf::Parser srdfParser;
+
+	// Build robot model from URDF.
+	urdfParser.parseFromParameter (urdfParameter);
+	hppDout (notice, "Finished parsing URDF file.");
+	// Set Collision Check Pairs
+	srdfParser.parseFromParameter (urdfParameter, srdfParameter, robot);
+	hppDout (notice, "Finished parsing SRDF file.");
+	// Look for special joints and attach them to the model.
+	urdfParser.setSpecialJoints ();
+	// Fill gaze position and direction.
+	urdfParser.fillGaze ();
+      }
+
       void loadUrdfModel (const DevicePtr_t& robot,
 			  const std::string& rootJointType,
 			  const std::string& package,

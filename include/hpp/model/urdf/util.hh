@@ -54,6 +54,21 @@ namespace hpp
 			   const std::string& urdfSuffix,
 			   const std::string& srdfSuffix);
 
+      /// Load robot model from ROS parameter
+      ///
+      /// \param robot Empty robot created before calling the function.
+      ///        Users can pass an instance of a class deriving from Device.
+      /// \param rootJointType type of root joint among "anchor", "freeflyer",
+      /// "planar",
+      /// \param urdfParameter Parameter containing the urdf description of the
+      ///        robot
+      /// \param srdfParameter Parameter containing the srdf description of the
+      ///        robot
+      void loadRobotModelFromParameter (const DevicePtr_t& robot,
+					const std::string& rootJointType,
+					const std::string& urdfParameter,
+					const std::string& srdfParameter);
+
       /// Load humanoid robot model by name
       ///
       /// \param robot Empty robot created before calling the function.
@@ -77,6 +92,22 @@ namespace hpp
 			      const std::string& modelName,
 			      const std::string& urdfSuffix,
 			      const std::string& srdfSuffix);
+
+      /// Load humanoid robot model from ROS parameter
+      ///
+      /// \param robot Empty robot created before calling the function.
+      ///        Users can pass an instance of a class deriving from Device.
+      /// \param rootJointType type of root joint among "anchor", "freeflyer",
+      /// "planar",
+      /// \param urdfParameter Parameter containing the urdf description of the
+      ///        robot
+      /// \param srdfParameter Parameter containing the srdf description of the
+      ///        robot
+      void loadHumanoidModelFromParameter
+      (const model::HumanoidRobotPtr_t& robot,
+       const std::string& rootJointType,
+       const std::string& urdfParameter,
+       const std::string& srdfParameter);
 
       /// Load only urdf model file
       ///

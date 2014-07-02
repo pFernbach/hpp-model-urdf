@@ -78,7 +78,7 @@ namespace hpp
 	/// \brief Destructor.
 	virtual ~Parser ();
 
-	/// \brief Parse an URDF file and return a humanoid robot.
+	/// \brief Parse an URDF file and return a robot.
 	///
 	/// The URDF file location must use the resource retriever format.
 	/// For instance, the following strings are allowed:
@@ -92,9 +92,12 @@ namespace hpp
 	/// resource_retriever format.
 	void parse (const std::string& resourceName);
 
-	/// \brief Parse an URDF sent as a stream and return a
-	/// humanoid robot.
-	void parseStream (const std::string& robotDescription);
+	/// Parse a ROS parameter containing a urdf robot description
+	/// \param parameterName name of the ROS parameter
+	void parseFromParameter (const std::string& parameterName);
+
+	/// \brief Build the robot from the urdf description
+	void buildRobot ();
 
 	/// \brief Set special joints in robot.
 	void setSpecialJoints ();

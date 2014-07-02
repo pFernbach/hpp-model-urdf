@@ -73,23 +73,23 @@ namespace hpp
 	///
 	/// See resource_retriever documentation for more information.
 	///
-	/// \param resourceName resource name using the
-	/// resource_retriever format.
-	///
 	/// \param robotResourceName URDF resource name
 	/// \param semanticResourceName SRDF resource name
+	/// \param robot the robot being constructed.
 	void parse (const std::string& robotResourceName,
 		    const std::string& semanticResourceName,
 		    RobotPtrType robot);
 
-	/// \brief Parse an SRDF sent as a stream and add semantic
-	/// information to humanoid robot.
-	///
-	/// \param robotDescription URDF stream
-	/// \param semanticDescription SRDF stream
-	void parseStream (const std::string& robotDescription,
-			  const std::string& semanticDescription,
-			  RobotPtrType& robot);
+	/// Parse a ROS parameter containing a srdf robot description
+	/// \param urdfParameterName name of the ROS parameter,
+	/// \param srdfParameterName name of the ROS parameter,
+	/// \param robot the robot being constructed.
+	void parseFromParameter (const std::string& urdfParameterName,
+				 const std::string& srdfParameterName,
+				 RobotPtrType robot);
+
+	/// \brief Process information parsed from a file or a parameter
+	void processSemanticDescription ();
 
       protected:
 	/// \brief Add collision pairs to robot.

@@ -1120,6 +1120,22 @@ namespace hpp
 	return transform;
       }
 
+      void Parser::parseFromParameter (const std::string& parameterName)
+      {
+	// Reset the attributes to avoid problems when loading
+	// multiple robots using the same object.
+	model_.clear ();
+	rootJoint_ = 0;
+	jointsMap_.clear ();
+
+	// Parse urdf model.
+	if (!model_.initParam (parameterName)) {
+	  throw std::runtime_error ("Failed to read parameter " +
+				    parameterName);
+	}
+	buildRobot ();
+      }
+
       void Parser::parse (const std::string& filename)
       {
 	hppDout (info, "filename: " << filename);
@@ -1132,11 +1148,7 @@ namespace hpp
 	unsigned i = 0;
 	for (; i < resource.size; ++i)
 	  robotDescription[i] = resource.data.get()[i];
-	parseStream (robotDescription);
-      }
 
-      void Parser::parseStream (const std::string& robotDescription)
-      {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
 	model_.clear ();
@@ -1148,7 +1160,11 @@ namespace hpp
 	  throw std::runtime_error ("Failed to open urdf file. "
 				    "robotDescription:\n" + robotDescription);
 	}
+	buildRobot ();
+      }
 
+      void Parser::buildRobot ()
+      {
 	// Get names of special joints.
 	findSpecialJoints ();
 

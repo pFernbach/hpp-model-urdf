@@ -25,6 +25,7 @@
 #include <sstream>
 #include <boost/foreach.hpp>
 #include <resource_retriever/retriever.h>
+#include <ros/node_handle.h>
 
 #include <urdf/model.h>
 
@@ -204,14 +205,6 @@ namespace hpp
 	for (unsigned i = 0; i < semanticResource.size; ++i)
 	  semanticDescription[i] = semanticResource.data.get()[i];
 
-	parseStream (robotDescription, semanticDescription, robot);
-      }
-
-      void
-      Parser::parseStream (const std::string& robotDescription,
-			   const std::string& semanticDescription,
-			   Parser::RobotPtrType& robot)
-      {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
 	urdfModel_.clear ();
@@ -231,7 +224,45 @@ namespace hpp
 	    throw std::runtime_error ("Failed to open SRDF file:\n"
 				      + semanticDescription);
 	  }
+	processSemanticDescription ();
+      }
 
+      void Parser::parseFromParameter (const std::string& urdfParameterName,
+				       const std::string& srdfParameterName,
+				       RobotPtrType robot)
+      {
+	// Reset the attributes to avoid problems when loading
+	// multiple robots using the same object.
+	urdfModel_.clear ();
+	srdfModel_.clear ();
+	robot_ = robot;
+
+	// Parse urdf model.
+	if (!urdfModel_.initParam (urdfParameterName))
+	  {
+	    throw std::runtime_error ("Failed to read ROS parameter "+
+				      urdfParameterName);
+	  }
+
+	// Parse srdf model. srdf::Model does not support direct parameter
+	// reading. We need to load the parameter value in a string
+	ros::NodeHandle nh;
+	std::string semanticDescription;
+	if (nh.getParam (srdfParameterName, semanticDescription)) {
+	  if (srdfModel_.initString (urdfModel_, semanticDescription)) {
+	    processSemanticDescription ();
+	  } else {
+	    throw std::runtime_error ("Failed to parse ROS parameter "+
+				      srdfParameterName);
+	  }
+	} else {
+	  throw std::runtime_error ("Failed to read ROS parameter "+
+				    srdfParameterName);
+	}
+      }
+
+      void Parser::processSemanticDescription ()
+      {
 	// Add collision pairs.
 	addCollisionPairs ();
       }
