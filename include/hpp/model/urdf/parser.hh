@@ -29,7 +29,7 @@
 
 # include <urdf/model.h>
 
-# include <fcl/BV/OBB.h>
+# include <fcl/BV/OBBRSS.h>
 # include <fcl/BVH/BVH_model.h>
 
 # include <hpp/model/body.hh>
@@ -59,7 +59,7 @@ namespace hpp
 	typedef DevicePtr_t RobotPtrType;
 	typedef Joint JointType;
 	typedef Body BodyType;
-	typedef fcl::BVHModel< fcl::OBB > PolyhedronType;
+	typedef fcl::BVHModel< fcl::OBBRSS > PolyhedronType;
 	typedef boost::shared_ptr <PolyhedronType> PolyhedronPtrType;
 
 	typedef Transform3f MatrixHomogeneousType;
