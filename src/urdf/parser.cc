@@ -830,8 +830,8 @@ namespace hpp
 	const fcl::Vec3f T = mat.getTranslation ();
 	std::string jointName = name + "_x";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	// Translation along x
 	fcl::Matrix3f permutation;
@@ -854,8 +854,8 @@ namespace hpp
 	joint = objectFactory_.createJointTranslation (pos);
 	jointName = name + "_y";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -873,8 +873,8 @@ namespace hpp
 	joint = objectFactory_.createJointTranslation (pos);
 	jointName = name + "_z";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -886,8 +886,8 @@ namespace hpp
 	joint = objectFactory_.createJointSO3 (mat);
 	jointName = name + "_SO3";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -903,8 +903,8 @@ namespace hpp
 	const fcl::Vec3f T = mat.getTranslation ();
 	std::string jointName = name + "_x";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	// Translation along x
 	fcl::Matrix3f permutation;
@@ -927,8 +927,8 @@ namespace hpp
 	joint = objectFactory_.createJointTranslation (pos);
 	jointName = name + "_y";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -946,8 +946,8 @@ namespace hpp
 	joint = objectFactory_.createJointRotation (pos);
 	jointName = name + "_rz";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
-				    name);
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
+				    jointName);
 	}
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -964,7 +964,7 @@ namespace hpp
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    name);
 	}
 
@@ -991,7 +991,7 @@ namespace hpp
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    name);
 	}
 
@@ -1014,7 +1014,7 @@ namespace hpp
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    name);
 	}
 
@@ -1041,7 +1041,7 @@ namespace hpp
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint") +
+	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    name);
 	}
 
