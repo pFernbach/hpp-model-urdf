@@ -828,59 +828,23 @@ namespace hpp
       {
 	JointPtr_t joint, parent;
 	const fcl::Vec3f T = mat.getTranslation ();
-	std::string jointName = name + "_x";
+	std::string jointName = name + "_xyz";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
 	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    jointName);
 	}
 	// Translation along x
-	fcl::Matrix3f permutation;
-	joint = objectFactory_.createJointTranslation (mat);
+	joint = objectFactory_.createJointTranslation3 (mat);
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
 	joint->lowerBound (0, -numeric_limits<double>::infinity());
 	joint->upperBound (0, +numeric_limits<double>::infinity());
+	joint->lowerBound (1, -numeric_limits<double>::infinity());
+	joint->upperBound (1, +numeric_limits<double>::infinity());
+	joint->lowerBound (2, -numeric_limits<double>::infinity());
+	joint->upperBound (2, +numeric_limits<double>::infinity());
 	if (robot)
 	  robot->rootJoint (joint);
-	parent = joint;
-
-	// Translation along y
-	permutation (0,0) = 0; permutation (0,1) = -1; permutation (0,2) = 0;
-	permutation (1,0) = 1; permutation (1,1) =  0; permutation (1,2) = 0;
-	permutation (2,0) = 0; permutation (2,1) =  0; permutation (2,2) = 1;
-	fcl::Transform3f pos;
-	pos.setRotation (permutation * mat.getRotation ());
-	pos.setTranslation (T);
-	joint = objectFactory_.createJointTranslation (pos);
-	jointName = name + "_y";
-	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint ") +
-				    jointName);
-	}
-	joint->name (jointName);
-	jointsMap_[jointName] = joint;
-	joint->lowerBound (0, -numeric_limits<double>::infinity());
-	joint->upperBound (0, +numeric_limits<double>::infinity());
-	parent->addChildJoint (joint);
-	parent = joint;
-
-	// Translation along z
-	permutation (0,0) = 0; permutation (0,1) = 0; permutation (0,2) = -1;
-	permutation (1,0) = 0; permutation (1,1) = 1; permutation (1,2) =  0;
-	permutation (2,0) = 1; permutation (2,1) = 0; permutation (2,2) =  0;
-	pos.setRotation (permutation * mat.getRotation ());
-	pos.setTranslation (T);
-	joint = objectFactory_.createJointTranslation (pos);
-	jointName = name + "_z";
-	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint ") +
-				    jointName);
-	}
-	joint->name (jointName);
-	jointsMap_[jointName] = joint;
-	joint->lowerBound (0, -numeric_limits<double>::infinity());
-	joint->upperBound (0, +numeric_limits<double>::infinity());
-	parent->addChildJoint (joint);
 	parent = joint;
 	// joint SO3
 	joint = objectFactory_.createJointSO3 (mat);
@@ -901,46 +865,28 @@ namespace hpp
       {
 	JointPtr_t joint, parent;
 	const fcl::Vec3f T = mat.getTranslation ();
-	std::string jointName = name + "_x";
+	std::string jointName = name + "_xy";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
 	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    jointName);
 	}
 	// Translation along x
 	fcl::Matrix3f permutation;
-	joint = objectFactory_.createJointTranslation (mat);
+	joint = objectFactory_.createJointTranslation2 (mat);
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
 	joint->lowerBound (0, -numeric_limits<double>::infinity());
 	joint->upperBound (0, +numeric_limits<double>::infinity());
+	joint->lowerBound (1, -numeric_limits<double>::infinity());
+	joint->upperBound (1, +numeric_limits<double>::infinity());
 	if (robot)
 	  robot->rootJoint (joint);
 	parent = joint;
-
-	// Translation along y
-	permutation (0,0) = 0; permutation (0,1) = -1; permutation (0,2) = 0;
-	permutation (1,0) = 1; permutation (1,1) =  0; permutation (1,2) = 0;
-	permutation (2,0) = 0; permutation (2,1) =  0; permutation (2,2) = 1;
-	fcl::Transform3f pos;
-	pos.setRotation (permutation * mat.getRotation ());
-	pos.setTranslation (T);
-	joint = objectFactory_.createJointTranslation (pos);
-	jointName = name + "_y";
-	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
-	  throw std::runtime_error (std::string ("Duplicated joint ") +
-				    jointName);
-	}
-	joint->name (jointName);
-	jointsMap_[jointName] = joint;
-	joint->lowerBound (0, -numeric_limits<double>::infinity());
-	joint->upperBound (0, +numeric_limits<double>::infinity());
-	parent->addChildJoint (joint);
-	parent = joint;
-
 	// Rotation along z
 	permutation (0,0) = 0; permutation (0,1) = 0; permutation (0,2) = -1;
 	permutation (1,0) = 0; permutation (1,1) = 1; permutation (1,2) =  0;
 	permutation (2,0) = 1; permutation (2,1) = 0; permutation (2,2) =  0;
+	fcl::Transform3f pos;
 	pos.setRotation (permutation * mat.getRotation ());
 	pos.setTranslation (T);
 	joint = objectFactory_.createJointRotation (pos);
