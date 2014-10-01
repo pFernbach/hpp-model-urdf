@@ -827,7 +827,6 @@ namespace hpp
 				    DevicePtr_t robot)
       {
 	JointPtr_t joint, parent;
-	const fcl::Vec3f T = mat.getTranslation ();
 	std::string jointName = name + "_xyz";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
 	  throw std::runtime_error (std::string ("Duplicated joint ") +
@@ -889,7 +888,7 @@ namespace hpp
 	fcl::Transform3f pos;
 	pos.setRotation (permutation * mat.getRotation ());
 	pos.setTranslation (T);
-	joint = objectFactory_.createJointRotation (pos);
+	joint = objectFactory_.createUnBoundedJointRotation (pos);
 	jointName = name + "_rz";
 	if (jointsMap_.find (jointName) != jointsMap_.end ()) {
 	  throw std::runtime_error (std::string ("Duplicated joint ") +
@@ -914,18 +913,12 @@ namespace hpp
 				    name);
 	}
 
-	joint = objectFactory_.createJointRotation (mat);
+	joint = objectFactory_.createBoundedJointRotation (mat);
 	joint->name (name);
 	if (limits) {
 	  joint->isBounded (0, true);
 	  joint->lowerBound (0, limits->lower);
 	  joint->upperBound (0, limits->upper);
-	} else {
-	  joint->isBounded (0, false);
-	  joint->lowerBound
-	    (0, -numeric_limits <double>::infinity ());
-	  joint->upperBound
-	    (0, numeric_limits <double>::infinity ());
 	}
 	jointsMap_[name] = joint;
 	return joint;
@@ -941,13 +934,8 @@ namespace hpp
 				    name);
 	}
 
-	joint = objectFactory_.createJointRotation (mat);
+	joint = objectFactory_.createUnBoundedJointRotation (mat);
 	joint->name (name);
-	joint->isBounded (0, false);
-	joint->lowerBound
-	  (0, -numeric_limits <double>::infinity ());
-	joint->upperBound
-	  (0, numeric_limits <double>::infinity ());
 	jointsMap_[name] = joint;
 	return joint;
       }
@@ -1131,16 +1119,7 @@ namespace hpp
 	connectJoints (rootJoint_);
 	// Add corresponding body (link) to each joint.
 	addBodiesToJoints ();
-
-	Configuration_t q (robot_->configSize ()); q.setZero ();
-	// If root joint is freeflyer, set quaternion part of configuration to
-	// 1.
-	if (rootJointType_ == "freeflyer") {
-	  q [3] = 1;
-	}
-	robot_->currentConfiguration (q);
       }
-
     } // end of namespace urdf.
   } // end of namespace model.
 } // end of namespace  hpp.
