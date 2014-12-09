@@ -47,8 +47,8 @@
 #include <hpp/model/urdf/parser.hh>
 #include <hpp/model/urdf/util.hh>
 
-#include <fcl/collision_object.h>
-#include <fcl/shape/geometric_shapes.h>
+#include <hpp/fcl/collision_object.h>
+#include <hpp/fcl/shape/geometric_shapes.h>
 
 namespace fcl {
   HPP_PREDEF_CLASS (CollisionGeometry);

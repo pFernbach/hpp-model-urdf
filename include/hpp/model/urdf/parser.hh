@@ -29,8 +29,8 @@
 
 # include <urdf/model.h>
 
-# include <fcl/BV/OBBRSS.h>
-# include <fcl/BVH/BVH_model.h>
+# include <hpp/fcl/BV/OBBRSS.h>
+# include <hpp/fcl/BVH/BVH_model.h>
 
 # include <hpp/model/body.hh>
 # include <hpp/model/humanoid-robot.hh>
