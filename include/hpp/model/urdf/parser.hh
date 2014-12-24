@@ -186,17 +186,20 @@ namespace hpp
 				DevicePtr_t robot);
 
 	/// \brief Create rotation joint and add it to joints map.
-	JointPtr_t createRotationJoint (const std::string& name,
-					  const MatrixHomogeneousType& mat,
-					  const UrdfJointLimitsPtrType& limits);
+	JointPtr_t createRotationJoint
+	(const std::string& name, const MatrixHomogeneousType& mat,
+	 const MatrixHomogeneousType& urdfLinkInJoint,
+	 const UrdfJointLimitsPtrType& limits);
 
 	/// \brief Create continuous joint and add it to joints map.
-	JointPtr_t createContinuousJoint (const std::string& name,
-					    const MatrixHomogeneousType& mat);
+	JointPtr_t createContinuousJoint
+	(const std::string& name, const MatrixHomogeneousType& urdfLinkInJoint,
+	 const MatrixHomogeneousType& mat);
 
 	/// \brief Create translation joint and add it to joints map.
 	JointPtr_t createTranslationJoint
 	(const std::string& name, const MatrixHomogeneousType& mat,
+	 const MatrixHomogeneousType& urdfLinkInJoint,
 	 const UrdfJointLimitsPtrType& limits);
 
 	/// \brief Create anchor joint and add it to joints map.
