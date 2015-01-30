@@ -396,23 +396,28 @@ namespace hpp
 
 	  // Normalize orientation if this is an actuated joint.
 	  UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	  Transform3f urdfLinkInJoint;
 	  if (joint->type == ::urdf::Joint::REVOLUTE
 	      || joint->type == ::urdf::Joint::CONTINUOUS
-	      || joint->type == ::urdf::Joint::PRISMATIC)
-	    position = position * normalizeFrameOrientation (joint);
+	      || joint->type == ::urdf::Joint::PRISMATIC) {
+	    Transform3f jointInUrdfLink = normalizeFrameOrientation (joint);
+	    urdfLinkInJoint = inverse (jointInUrdfLink);
+	    position = position * jointInUrdfLink;
+	  }
 
 	  switch(it->second->type) {
 	  case ::urdf::Joint::UNKNOWN:
 	    throw std::runtime_error ("Joint has UNKNOWN type");
 	    break;
 	  case ::urdf::Joint::REVOLUTE:
-	    createRotationJoint (it->first, position, it->second->limits);
+	    createRotationJoint (it->first, position, urdfLinkInJoint,
+				 it->second->limits);
 	    break;
 	  case ::urdf::Joint::CONTINUOUS:
-	    createContinuousJoint (it->first, position);
+	    createContinuousJoint (it->first, position, urdfLinkInJoint);
 	    break;
 	  case ::urdf::Joint::PRISMATIC:
-	    createTranslationJoint (it->first, position,
+	    createTranslationJoint (it->first, position, urdfLinkInJoint,
 				    it->second->limits);
 	    break;
 	  case ::urdf::Joint::FLOATING:
@@ -542,6 +547,7 @@ namespace hpp
 
 	  // Link dynamic body to dynamic joint.
 	  it->second->setLinkedBody (body);
+	  it->second->linkName (link->name);
 	  hppDout (info,  "Linking body " << body->name () << " to joint "
 		   << it->second->name ());
 
@@ -916,6 +922,7 @@ namespace hpp
       JointPtr_t
       Parser::createRotationJoint (const std::string& name,
 				   const MatrixHomogeneousType& mat,
+				   const MatrixHomogeneousType& urdfLinkInJoint,
 				   const Parser::UrdfJointLimitsPtrType& limits)
       {
 	JointPtr_t joint;
@@ -926,6 +933,7 @@ namespace hpp
 
 	joint = objectFactory_.createBoundedJointRotation (mat);
 	joint->name (name);
+	joint->linkInJointFrame (urdfLinkInJoint);
 	if (limits) {
 	  joint->isBounded (0, true);
 	  joint->lowerBound (0, limits->lower);
@@ -935,9 +943,9 @@ namespace hpp
 	return joint;
       }
 
-      JointPtr_t
-      Parser::createContinuousJoint (const std::string& name,
-				     const MatrixHomogeneousType& mat)
+      JointPtr_t Parser::createContinuousJoint
+      (const std::string& name, const MatrixHomogeneousType& mat,
+       const MatrixHomogeneousType& urdfLinkInJoint)
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
@@ -947,15 +955,15 @@ namespace hpp
 
 	joint = objectFactory_.createUnBoundedJointRotation (mat);
 	joint->name (name);
+	joint->linkInJointFrame (urdfLinkInJoint);
 	jointsMap_[name] = joint;
 	return joint;
       }
 
-      JointPtr_t
-      Parser::createTranslationJoint (const std::string& name,
-				      const MatrixHomogeneousType& mat,
-				      const Parser::
-				      UrdfJointLimitsPtrType& limits)
+      JointPtr_t Parser::createTranslationJoint
+      (const std::string& name, const MatrixHomogeneousType& mat,
+       const MatrixHomogeneousType& urdfLinkInJoint,
+       const Parser::UrdfJointLimitsPtrType& limits)
       {
 	JointPtr_t joint;
 	if (jointsMap_.find (name) != jointsMap_.end ()) {
@@ -965,6 +973,7 @@ namespace hpp
 
 	joint = objectFactory_.createJointTranslation (mat);
 	joint->name (name);
+	joint->linkInJointFrame (urdfLinkInJoint);
 	if (limits) {
 	  joint->isBounded (0, true);
 	  joint->lowerBound (0, limits->lower);
