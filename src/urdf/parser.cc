@@ -711,33 +711,44 @@ namespace hpp
 	  loadPolyhedronFromResource (collisionFilename, scale, polyhedron);
 	  geometry = polyhedron;
 	}
-
 	// Handle the case where collision geometry is a cylinder
 	// Use FCL capsules for cylinders
-	if (collision->geometry->type == ::urdf::Geometry::CYLINDER) {
-	  boost::shared_ptr < ::urdf::Cylinder> collisionGeometry
-	    = boost::dynamic_pointer_cast< ::urdf::Cylinder>
-	    (collision->geometry);
-
-	  double radius = collisionGeometry->radius;
-	  double length = collisionGeometry->length;
-
-	  // Create fcl capsule geometry.
-	  geometry = fcl::CollisionGeometryPtr_t
-	    (new fcl::Capsule (radius, length));
+	else if (collision->geometry->type == ::urdf::Geometry::CYLINDER) {
+		  boost::shared_ptr < ::urdf::Cylinder> collisionGeometry
+		    = boost::dynamic_pointer_cast< ::urdf::Cylinder>
+		    (collision->geometry);
+	
+		  double radius = collisionGeometry->radius;
+		  double length = collisionGeometry->length;
+	
+		  // Create fcl capsule geometry.
+		  geometry = fcl::CollisionGeometryPtr_t
+		    (new fcl::Capsule (radius, length));
 	}
-
 	// Handle the case where collision geometry is a box.
-	if (collision->geometry->type == ::urdf::Geometry::BOX) {
-	  boost::shared_ptr < ::urdf::Box> collisionGeometry
-	    = boost::dynamic_pointer_cast< ::urdf::Box> (collision->geometry);
-
-	  double x = collisionGeometry->dim.x;
-	  double y = collisionGeometry->dim.y;
-	  double z = collisionGeometry->dim.z;
-
-	  geometry = fcl::CollisionGeometryPtr_t (new fcl::Box (x, y, z));
+	else if (collision->geometry->type == ::urdf::Geometry::BOX) {
+		  boost::shared_ptr < ::urdf::Box> collisionGeometry
+		    = boost::dynamic_pointer_cast< ::urdf::Box> (collision->geometry);
+	
+		  double x = collisionGeometry->dim.x;
+		  double y = collisionGeometry->dim.y;
+		  double z = collisionGeometry->dim.z;
+	
+		  geometry = fcl::CollisionGeometryPtr_t (new fcl::Box (x, y, z));
 	}
+ 	// Handle the case where collision geometry is a sphere.
+	else if (collision->geometry->type == ::urdf::Geometry::SPHERE) {
+   	  boost::shared_ptr < ::urdf::Sphere> collisionGeometry
+   	    = boost::dynamic_pointer_cast< ::urdf::Sphere> (collision->geometry);
+
+      double radius = collisionGeometry->radius;
+
+      geometry = fcl::CollisionGeometryPtr_t (new fcl::Sphere (radius));
+  }
+	else throw std::runtime_error (std::string ("Unknown geometry type :"));// +
+    //collision->geometry->type);
+	
+
 	// Compute body position in world frame.
 	MatrixHomogeneousType position =
 	  computeBodyAbsolutePosition (link, collision->origin);
