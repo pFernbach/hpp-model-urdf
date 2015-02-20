@@ -42,10 +42,8 @@ namespace hpp
   {
     namespace srdf
     {
-      Parser::Parser ()
-	: urdfModel_ (),
-	  srdfModel_ (),
-	  robot_ ()
+      Parser::Parser (urdf::Parser* parser)
+	: urdfParser_ (parser), srdfModel_ (), robot_ ()
       {}
 
       Parser::~Parser ()
@@ -68,12 +66,13 @@ namespace hpp
 
       void Parser::addCollisionPairs ()
       {
-	JointVector_t joints = robot_->getJointVector ();
+        typedef urdf::Parser::MapHppJointType MapHppJointType;
+        MapHppJointType& jmap = urdfParser_->jointsMap_;
 
 	// Cycle through all joint pairs
-	for (JointVector_t::iterator it1 = joints.begin ();
-	     it1 != joints.end (); it1++) {
-	  JointPtr_t joint1 = *it1;
+	for (MapHppJointType::const_iterator it1 = jmap.begin ();
+	     it1 != jmap.end (); it1++) {
+	  JointPtr_t joint1 = it1->second;
 	  hppDout (info, "Cycling through joint " << joint1->name ()
 		   << ": " << joint1);
 	  Body* body1 = joint1->linkedBody ();
@@ -83,9 +82,9 @@ namespace hpp
 	  } else {
 	    hppDout (info, "body " << body1);
 	    std::string bodyName1 = body1->name ();
-	    for (JointVector_t::iterator it2 = joints.begin ();
+	    for (MapHppJointType::const_iterator it2 = jmap.begin ();
 		 it2 != it1; it2++) {
-	      JointPtr_t joint2 = *it2;
+	      JointPtr_t joint2 = it2->second;
 	      hppDout (info, "  Cycling through joint " << joint2->name ());
 	      Body* body2 = joint2->linkedBody ();
 	      if (!body2) {
@@ -133,7 +132,7 @@ namespace hpp
 			      const std::string& jointName,
 			      std::string& jointType)
       {
-	switch (urdfModel_.joints_[jointName]->type)
+	switch (urdfParser_->model_.joints_[jointName]->type)
 	  {
 	  case ::urdf::Joint::REVOLUTE:
 	    if (dofs.size () != 1)
@@ -185,18 +184,10 @@ namespace hpp
       }
 
       void
-      Parser::parse (const std::string& robotResourceName,
-		     const std::string& semanticResourceName,
+      Parser::parse (const std::string& semanticResourceName,
 		     Parser::RobotPtrType robot)
       {
 	resource_retriever::Retriever resourceRetriever;
-
-	resource_retriever::MemoryResource robotResource =
-	  resourceRetriever.get(robotResourceName);
-	std::string robotDescription;
-	robotDescription.resize(robotResource.size);
-	for (unsigned i = 0; i < robotResource.size; ++i)
-	  robotDescription[i] = robotResource.data.get()[i];
 
 	resource_retriever::MemoryResource semanticResource =
 	  resourceRetriever.get(semanticResourceName);
@@ -207,19 +198,11 @@ namespace hpp
 
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
-	urdfModel_.clear ();
 	srdfModel_.clear ();
 	robot_ = robot;
 
-	// Parse urdf model.
-	if (!urdfModel_.initString (robotDescription))
-	  {
-	    throw std::runtime_error ("Failed to open URDF file:\n"+
-				      robotDescription);
-	  }
-
 	// Parse srdf model.
-	if (!srdfModel_.initString (urdfModel_, semanticDescription))
+	if (!srdfModel_.initString (urdfParser_->model_, semanticDescription))
 	  {
 	    throw std::runtime_error ("Failed to open SRDF file:\n"
 				      + semanticDescription);
@@ -227,29 +210,20 @@ namespace hpp
 	processSemanticDescription ();
       }
 
-      void Parser::parseFromParameter (const std::string& urdfParameterName,
-				       const std::string& srdfParameterName,
+      void Parser::parseFromParameter (const std::string& srdfParameterName,
 				       RobotPtrType robot)
       {
 	// Reset the attributes to avoid problems when loading
 	// multiple robots using the same object.
-	urdfModel_.clear ();
 	srdfModel_.clear ();
 	robot_ = robot;
-
-	// Parse urdf model.
-	if (!urdfModel_.initParam (urdfParameterName))
-	  {
-	    throw std::runtime_error ("Failed to read ROS parameter "+
-				      urdfParameterName);
-	  }
 
 	// Parse srdf model. srdf::Model does not support direct parameter
 	// reading. We need to load the parameter value in a string
 	ros::NodeHandle nh;
 	std::string semanticDescription;
 	if (nh.getParam (srdfParameterName, semanticDescription)) {
-	  if (srdfModel_.initString (urdfModel_, semanticDescription)) {
+	  if (srdfModel_.initString (urdfParser_->model_, semanticDescription)) {
 	    processSemanticDescription ();
 	  } else {
 	    throw std::runtime_error ("Failed to parse ROS parameter "+

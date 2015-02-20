@@ -43,6 +43,10 @@ namespace hpp
 {
   namespace model
   {
+    namespace srdf {
+      class Parser;
+    }
+
     namespace urdf
     {
       /// \brief Parse an URDF file and return a
@@ -241,6 +245,8 @@ namespace hpp
 	std::vector <fcl::Vec3f> vertices_;
 	std::vector <fcl::Triangle> triangles_;
 	ObjectFactory objectFactory_;
+
+        friend class srdf::Parser;
       }; // class Parser
     } // end of namespace urdf.
   } // end of namespace model.

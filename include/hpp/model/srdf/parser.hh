@@ -53,7 +53,9 @@ namespace hpp
 	typedef urdf::Parser::RobotPtrType RobotPtrType;
 
 	/// \brief Default constructor.
-	explicit Parser ();
+        /// \param parser the corresponding URDF parse
+        /// \note the parser will NOT be deleted by the destructor
+	explicit Parser (urdf::Parser* parser);
 	/// \brief Destructor.
 	virtual ~Parser ();
 
@@ -73,19 +75,17 @@ namespace hpp
 	///
 	/// See resource_retriever documentation for more information.
 	///
-	/// \param robotResourceName URDF resource name
 	/// \param semanticResourceName SRDF resource name
 	/// \param robot the robot being constructed.
-	void parse (const std::string& robotResourceName,
-		    const std::string& semanticResourceName,
+        /// \note the inner URDF parser should have been updated before.
+	void parse (const std::string& semanticResourceName,
 		    RobotPtrType robot);
 
 	/// Parse a ROS parameter containing a srdf robot description
-	/// \param urdfParameterName name of the ROS parameter,
 	/// \param srdfParameterName name of the ROS parameter,
 	/// \param robot the robot being constructed.
-	void parseFromParameter (const std::string& urdfParameterName,
-				 const std::string& srdfParameterName,
+        /// \note the inner URDF parser should have been updated before.
+	void parseFromParameter (const std::string& srdfParameterName,
 				 RobotPtrType robot);
 
 	/// \brief Process information parsed from a file or a parameter
@@ -105,7 +105,7 @@ namespace hpp
 			     std::string& jointType);
 
       private:
-	::urdf::Model urdfModel_;
+        urdf::Parser* urdfParser_;
 	::srdf::Model srdfModel_;
 	RobotPtrType robot_;
 

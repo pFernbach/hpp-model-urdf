@@ -37,7 +37,7 @@ namespace hpp
 			   const std::string& srdfSuffix)
       {
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
-	hpp::model::srdf::Parser srdfParser;
+        hpp::model::srdf::Parser srdfParser (&urdfParser);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
@@ -48,7 +48,7 @@ namespace hpp
 	urdfParser.parse (urdfPath);
 	hppDout (notice, "Finished parsing URDF file.");
 	// Set Collision Check Pairs
-	srdfParser.parse (urdfPath, srdfPath, robot);
+	srdfParser.parse (srdfPath, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
       }
 
@@ -60,7 +60,7 @@ namespace hpp
 			      const std::string& srdfSuffix)
       {
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
-	hpp::model::srdf::Parser srdfParser;
+	hpp::model::srdf::Parser srdfParser (&urdfParser);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
@@ -77,7 +77,7 @@ namespace hpp
 
 
 	// Set Collision Check Pairs
-	srdfParser.parse (urdfPath, srdfPath, robot);
+	srdfParser.parse (srdfPath, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
       }
 
@@ -87,13 +87,13 @@ namespace hpp
 					const std::string& srdfParameter)
       {
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
-	hpp::model::srdf::Parser srdfParser;
+	hpp::model::srdf::Parser srdfParser (&urdfParser);
 
 	// Build robot model from URDF.
 	urdfParser.parseFromParameter (urdfParameter);
 	hppDout (notice, "Finished parsing URDF file.");
 	// Set Collision Check Pairs
-	srdfParser.parseFromParameter (urdfParameter, srdfParameter, robot);
+	srdfParser.parseFromParameter (srdfParameter, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
       }
 
@@ -104,13 +104,13 @@ namespace hpp
        const std::string& srdfParameter)
       {
 	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
-	hpp::model::srdf::Parser srdfParser;
+	hpp::model::srdf::Parser srdfParser (&urdfParser);
 
 	// Build robot model from URDF.
 	urdfParser.parseFromParameter (urdfParameter);
 	hppDout (notice, "Finished parsing URDF file.");
 	// Set Collision Check Pairs
-	srdfParser.parseFromParameter (urdfParameter, srdfParameter, robot);
+	srdfParser.parseFromParameter (srdfParameter, robot);
 	hppDout (notice, "Finished parsing SRDF file.");
 	// Look for special joints and attach them to the model.
 	urdfParser.setSpecialJoints ();
