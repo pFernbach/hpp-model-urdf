@@ -35,6 +35,9 @@ namespace hpp
       ///
       /// \param robot Empty robot created before calling the function.
       ///        Users can pass an instance of a class deriving from Device.
+      /// \param baseJoint joint to which the joint tree is added.
+      /// \param prefix string to insert before all names
+      ///               (joint, link, body names)
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -47,6 +50,14 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
+      void loadRobotModel (const DevicePtr_t& robot,
+                           const JointPtr_t&  baseJoint,
+			   const std::string& prefix,
+			   const std::string& rootJointType,
+			   const std::string& package,
+			   const std::string& modelName,
+			   const std::string& urdfSuffix,
+			   const std::string& srdfSuffix);
       void loadRobotModel (const DevicePtr_t& robot,
 			   const std::string& rootJointType,
 			   const std::string& package,
@@ -74,6 +85,9 @@ namespace hpp
       /// \param robot Empty robot created before calling the function.
       ///        Users can pass an instance of a class deriving from
       ///        HumanoidRobot.
+      /// \param baseJoint joint to which the joint tree is added.
+      /// \param prefix string to insert before all names
+      ///               (joint, link, body names)
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -86,6 +100,14 @@ namespace hpp
       /// package://${modelName}_description/urdf/${modelName}${urdfSuffix}.urdf
       /// \li
       /// package://${modelName}_description/srdf/${modelName}${srdfSuffix}.srdf
+      void loadHumanoidModel (const model::HumanoidRobotPtr_t& robot,
+                              const JointPtr_t&  baseJoint,
+                              const std::string& prefix,
+			      const std::string& rootJointType,
+			      const std::string& package,
+			      const std::string& modelName,
+			      const std::string& urdfSuffix,
+			      const std::string& srdfSuffix);
       void loadHumanoidModel (const model::HumanoidRobotPtr_t& robot,
 			      const std::string& rootJointType,
 			      const std::string& package,
@@ -113,6 +135,9 @@ namespace hpp
       ///
       /// \param robot Empty robot created before calling the function.
       ///        Users can pass an instance of a class deriving from Device.
+      /// \param baseJoint joint to which the joint tree is added.
+      /// \param prefix string to insert before all names
+      ///               (joint, link, body names)
       /// \param rootJointType type of root joint among "anchor", "freeflyer",
       /// "planar",
       /// \param package ros package containing the model
@@ -121,6 +146,12 @@ namespace hpp
       /// \note This function reads the following file:
       /// \li
       /// package://${package}/urdf/${filename}.urdf
+      void loadUrdfModel (const DevicePtr_t& robot,
+                          const JointPtr_t&  baseJoint,
+                          const std::string& prefix,
+			  const std::string& rootJointType,
+			  const std::string& package,
+			  const std::string& filename);
       void loadUrdfModel (const DevicePtr_t& robot,
 			  const std::string& rootJointType,
 			  const std::string& package,

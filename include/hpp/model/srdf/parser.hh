@@ -91,6 +91,13 @@ namespace hpp
 	/// \brief Process information parsed from a file or a parameter
 	void processSemanticDescription ();
 
+        /// Set the prefix of all joints
+        void prefix (const std::string& prefix)
+        {
+          if (prefix.empty ()) return;
+          prefix_ = prefix + "/";
+        }
+
       protected:
 	/// \brief Add collision pairs to robot.
 	void addCollisionPairs ();
@@ -105,10 +112,24 @@ namespace hpp
 			     std::string& jointType);
 
       private:
+        inline std::string prependPrefix (const std::string& in) const
+        {
+          if (prefix_.empty ()) return in;
+          return prefix_ + in;
+        }
+
+        inline std::string removePrefix (const std::string& in) const
+        {
+          if (prefix_.empty ()) return in;
+          assert (in.compare (0, prefix_.size (), prefix_) == 0);
+          return in.substr (prefix_.size ());
+        }
+
         urdf::Parser* urdfParser_;
 	::srdf::Model srdfModel_;
 	RobotPtrType robot_;
 
+        std::string prefix_;
       }; // class Parser
 
     } // end of namespace srdf.

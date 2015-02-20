@@ -77,8 +77,15 @@ namespace hpp
 	///
 	/// \param rootJointType type of root joint among "anchor", "freeflyer",
 	/// "planar",
-	explicit Parser (const std::string& rooJointType,
-			 const RobotPtrType& robot);
+        /// \param[in,out] robot the RobotPtrType to be filled,
+        /// \param[in,out] baseJoint the root of the joint tree is inserted as
+        ///              a child of baseJoint.
+        ///              If the pointer is NULL, the root of the joint tree is
+        ///              the robot root joint.
+	explicit Parser (const std::string& rootJointType,
+			 const RobotPtrType& robot,
+                         const JointPtr_t& baseJoint = JointPtr_t());
+
 	/// \brief Destructor.
 	virtual ~Parser ();
 
@@ -107,6 +114,13 @@ namespace hpp
 	void setSpecialJoints ();
 	/// \brief Fill gaze.
 	void fillGaze ();
+
+        /// Set the prefix of all joints
+        void prefix (const std::string& prefix)
+        {
+          if (prefix.empty ()) return;
+          prefix_ = prefix + "/";
+        }
 
       private:
 	/// \brief Retrieve joint name attached to a particular link.
@@ -222,11 +236,26 @@ namespace hpp
 	(const std::string& referenceJointName,
 	 const std::string& currentJointName);
 
+        inline std::string prependPrefix (const std::string& in) const
+        {
+          if (prefix_.empty ()) return in;
+          return prefix_ + in;
+        }
+
+        inline std::string removePrefix (const std::string& in) const
+        {
+          if (prefix_.empty ()) return in;
+          assert (in.compare (0, prefix_.size (), prefix_) == 0);
+          return in.substr (prefix_.size ());
+        }
+
 	::urdf::Model model_;
 	const RobotPtrType robot_;
 	JointPtr_t rootJoint_;
+	JointPtr_t baseJoint_;
 	MapHppJointType jointsMap_;
 	std::string rootJointType_;
+        std::string prefix_;
 	/// \brief Special joints names.
 	/// \{
 	/// Name of the root joint (holding the first link)

@@ -197,12 +197,15 @@ namespace hpp
 
       using std::numeric_limits;
       Parser::Parser (const std::string& rootJointType,
-		      const RobotPtrType& robot)
+                      const RobotPtrType& robot,
+                      const JointPtr_t& baseJoint)
   : model_ (),
     robot_ (robot),
     rootJoint_ (),
+    baseJoint_ (baseJoint),
     jointsMap_ (),
     rootJointType_ (rootJointType),
+    prefix_ (),
     rootJointName_ (),
     chestJointName_ (),
     leftWristJointName_ (),
@@ -290,14 +293,14 @@ namespace hpp
 	  {
 	    UrdfJointPtrType joint = linkPtr->parent_joint;
 	    if (joint)
-	      jointName = joint->name;
+	      jointName = prependPrefix (joint->name);
 	  }
       }
 
       void
       Parser::findSpecialJoints ()
       {
-	rootJointName_ = "base_joint_SO3";
+	rootJointName_ = prependPrefix ("base_joint_SO3");
 	findSpecialJoint ("torso", chestJointName_);
 	findSpecialJoint ("l_wrist", leftWristJointName_);
 	findSpecialJoint ("r_wrist", rightWristJointName_);
@@ -368,7 +371,8 @@ namespace hpp
 	  createAnchorJoint (name, mat);
 	  rootJointName_ = name;
 	  rootJoint_ = jointsMap_ [rootJointName_];
-	  robot->rootJoint (rootJoint_);
+          if (baseJoint_) baseJoint_->addChildJoint (rootJoint_);
+          else robot->rootJoint (rootJoint_);
 	} else if (rootJointType_ == "planar") {
 	  createPlanarJoint (name, mat, robot);
 	  rootJointName_ = name + "_rz";
@@ -376,7 +380,7 @@ namespace hpp
 	} else {
 	  throw std::runtime_error ("Root joint should be either, \"anchor\","
 				    "\"freeflyer\" of \"planar\"");
-	}
+        }
       }
 
       void Parser::parseJoints ()
@@ -385,7 +389,7 @@ namespace hpp
 	// FIXME: position set to identity for now.
 	MatrixHomogeneousType position;
 	position.setIdentity ();
-	createRootJoint ("base_joint", position, robot_);
+	createRootJoint (prependPrefix ("base_joint"), position, robot_);
 
 	// Iterate through each "true kinematic" joint and create a
 	// corresponding hpp::model::Joint.
@@ -405,29 +409,30 @@ namespace hpp
 	    position = position * jointInUrdfLink;
 	  }
 
+          std::string jointName = prependPrefix (it->first);
 	  switch(it->second->type) {
 	  case ::urdf::Joint::UNKNOWN:
 	    throw std::runtime_error ("Joint has UNKNOWN type");
 	    break;
 	  case ::urdf::Joint::REVOLUTE:
-	    createRotationJoint (it->first, position, urdfLinkInJoint,
+	    createRotationJoint (jointName, position, urdfLinkInJoint,
 				 it->second->limits);
 	    break;
 	  case ::urdf::Joint::CONTINUOUS:
-	    createContinuousJoint (it->first, position, urdfLinkInJoint);
+	    createContinuousJoint (jointName, position, urdfLinkInJoint);
 	    break;
 	  case ::urdf::Joint::PRISMATIC:
-	    createTranslationJoint (it->first, position, urdfLinkInJoint,
+	    createTranslationJoint (jointName, position, urdfLinkInJoint,
 				    it->second->limits);
 	    break;
 	  case ::urdf::Joint::FLOATING:
-	    createFreeflyerJoint (it->first, position);
+	    createFreeflyerJoint (jointName, position);
 	    break;
 	  case ::urdf::Joint::PLANAR:
 	    throw std::runtime_error ("PLANAR joints are not supported");
 	    break;
 	  case ::urdf::Joint::FIXED:
-	    createAnchorJoint (it->first, position);
+	    createAnchorJoint (jointName, position);
 	    break;
 	  default:
 	    std::ostringstream error;
@@ -457,7 +462,8 @@ namespace hpp
         for(MapHppJointType::const_iterator it = jointsMap_.begin();
 	    it != jointsMap_.end(); ++it) {
 	  // Retrieve associated URDF joint.
-	  UrdfJointConstPtrType joint = model_.getJoint (it->first);
+	  UrdfJointConstPtrType joint =
+            model_.getJoint (removePrefix (it->first));
 	  if (!joint && it->first != rootJointName_)
 	    continue;
 
@@ -537,7 +543,7 @@ namespace hpp
 	  // Create dynamic body and fill inertial information.
 	  Body* body = objectFactory_.createBody ();
 	  assert (body);
-	  body->name (link->name);
+	  body->name (prependPrefix (link->name));
 	  hppDout (info, "creating Body with name " << body->name ()
 		   << " at " << body);
 
@@ -547,7 +553,7 @@ namespace hpp
 
 	  // Link dynamic body to dynamic joint.
 	  it->second->setLinkedBody (body);
-	  it->second->linkName (link->name);
+	  it->second->linkName (prependPrefix (link->name));
 	  hppDout (info,  "Linking body " << body->name () << " to joint "
 		   << it->second->name ());
 
@@ -571,7 +577,8 @@ namespace hpp
 	}
 	else {
 	  parentJointInWorld =
-	    findJoint (link->parent_joint->name)->currentTransformation ();
+	    findJoint (prependPrefix (link->parent_joint->name))
+              ->currentTransformation ();
 	}
 	// Denormalize orientation if this is an actuated joint.
 	if (link == model_.getRoot ())
@@ -753,8 +760,8 @@ namespace hpp
 	MatrixHomogeneousType position =
 	  computeBodyAbsolutePosition (link, collision->origin);
 	if (geometry) {
-	  CollisionObjectPtr_t collisionObject
-	    (CollisionObject::create (geometry, position, link->name));
+	  CollisionObjectPtr_t collisionObject (CollisionObject::create
+              (geometry, position, prependPrefix (link->name)));
 
 	  // Add solid component.
 	  Body* body = joint->linkedBody ();
@@ -805,16 +812,17 @@ namespace hpp
 	typedef boost::shared_ptr < ::urdf::Joint> jointPtr_t;
 
 	boost::shared_ptr <const ::urdf::Joint> joint =
-	  model_.getJoint (jointName);
+	  model_.getJoint (removePrefix (jointName));
 
-	if (!joint && jointName.compare (0, 10, "base_joint") != 0) {
+	if (!joint
+            && removePrefix (jointName).compare (0, 10, "base_joint") != 0) {
 	  std::string msg ("Failed to retrieve children joints of joint ");
 	  msg += std::string (jointName);
 	  throw std::runtime_error (msg);
 	}
 
 	boost::shared_ptr <const ::urdf::Link> childLink;
-	if (jointName.compare (0, 10, "base_joint") == 0)
+	if (removePrefix (jointName).compare (0, 10, "base_joint") == 0)
 	  childLink = model_.getRoot ();
 	else
 	  childLink = model_.getLink (joint->child_link_name);
@@ -831,10 +839,10 @@ namespace hpp
 
 	BOOST_FOREACH (const jointPtr_t& joint, jointChildren)
 	  {
-	    if (jointsMap_.count(joint->name) > 0)
-	      result.push_back (joint->name);
+	    if (jointsMap_.count(prependPrefix (joint->name)) > 0)
+	      result.push_back (prependPrefix (joint->name));
 	    else
-	      getChildrenJoint (joint->name, result);
+	      getChildrenJoint (prependPrefix (joint->name), result);
 	  }
       }
 
@@ -849,7 +857,7 @@ namespace hpp
 	  throw std::runtime_error (std::string ("Duplicated joint ") +
 				    jointName);
 	}
-	// Translation along x
+	// Translation along xyz
 	joint = objectFactory_.createJointTranslation3 (mat);
 	joint->name (jointName);
 	jointsMap_[jointName] = joint;
@@ -859,8 +867,8 @@ namespace hpp
 	joint->upperBound (1, +numeric_limits<double>::infinity());
 	joint->lowerBound (2, -numeric_limits<double>::infinity());
 	joint->upperBound (2, +numeric_limits<double>::infinity());
-	if (robot)
-	  robot->rootJoint (joint);
+        if (baseJoint_) baseJoint_->addChildJoint (joint);
+        else if (robot) robot->rootJoint (joint);
 	parent = joint;
 	// joint SO3
 	joint = objectFactory_.createJointSO3 (mat);
@@ -895,8 +903,8 @@ namespace hpp
 	joint->upperBound (0, +numeric_limits<double>::infinity());
 	joint->lowerBound (1, -numeric_limits<double>::infinity());
 	joint->upperBound (1, +numeric_limits<double>::infinity());
-	if (robot)
-	  robot->rootJoint (joint);
+        if (baseJoint_) baseJoint_->addChildJoint (joint);
+        else if (robot) robot->rootJoint (joint);
 	parent = joint;
 	// Rotation along z
 	permutation (0,0) = 0; permutation (0,1) = 0; permutation (0,2) = -1;

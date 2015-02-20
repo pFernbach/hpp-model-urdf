@@ -92,7 +92,9 @@ namespace hpp
 			 " has no hpp::model::Body.");
 	      } else {
 		std::string bodyName2 = body2->name ();
-		if (!isCollisionPairDisabled (bodyName1, bodyName2)) {
+		if (!isCollisionPairDisabled (
+                      removePrefix (bodyName1), 
+                      removePrefix (bodyName2))) {
 		  hppDout (info, "Handling pair: ("  << bodyName1 << ","
 			   << bodyName2 << ")");
 

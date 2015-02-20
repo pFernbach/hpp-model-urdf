@@ -34,10 +34,26 @@ namespace hpp
 			   const std::string& package,
 			   const std::string& modelName,
 			   const std::string& urdfSuffix,
-			   const std::string& srdfSuffix)
+                           const std::string& srdfSuffix)
       {
-	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
-        hpp::model::srdf::Parser srdfParser (&urdfParser);
+        loadRobotModel (robot, JointPtr_t (), "", rootJointType, package,
+            modelName, urdfSuffix, srdfSuffix);
+      }
+
+      void loadRobotModel (const DevicePtr_t& robot,
+                           const JointPtr_t&  baseJoint,
+			   const std::string& prefix,
+			   const std::string& rootJointType,
+			   const std::string& package,
+			   const std::string& modelName,
+			   const std::string& urdfSuffix,
+                           const std::string& srdfSuffix)
+      {
+	hpp::model::urdf::Parser urdfParser (rootJointType, robot, baseJoint);
+	hpp::model::srdf::Parser srdfParser (&urdfParser);
+
+        urdfParser.prefix (prefix);
+        srdfParser.prefix (prefix);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
@@ -59,8 +75,24 @@ namespace hpp
 			      const std::string& urdfSuffix,
 			      const std::string& srdfSuffix)
       {
-	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
+        loadHumanoidModel (robot, JointPtr_t (), "", rootJointType, package,
+            modelName, urdfSuffix, srdfSuffix);
+      }
+
+      void loadHumanoidModel (const model::HumanoidRobotPtr_t& robot,
+                              const JointPtr_t&  baseJoint,
+			      const std::string& prefix,
+			      const std::string& rootJointType,
+			      const std::string& package,
+			      const std::string& modelName,
+			      const std::string& urdfSuffix,
+			      const std::string& srdfSuffix)
+      {
+	hpp::model::urdf::Parser urdfParser (rootJointType, robot, baseJoint);
 	hpp::model::srdf::Parser srdfParser (&urdfParser);
+
+        urdfParser.prefix (prefix);
+        srdfParser.prefix (prefix);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
 	  + modelName + urdfSuffix + ".urdf";
@@ -119,11 +151,22 @@ namespace hpp
       }
 
       void loadUrdfModel (const DevicePtr_t& robot,
+			  const std::string& rootType,
+			  const std::string& package,
+			  const std::string& filename)
+      {
+        loadUrdfModel (robot, JointPtr_t (), "", rootType, package, filename);
+      }
+
+      void loadUrdfModel (const DevicePtr_t& robot,
+                          const JointPtr_t&  baseJoint,
+			  const std::string& prefix,
 			  const std::string& rootJointType,
 			  const std::string& package,
 			  const std::string& filename)
       {
-	hpp::model::urdf::Parser urdfParser (rootJointType, robot);
+	hpp::model::urdf::Parser urdfParser (rootJointType, robot, baseJoint);
+        urdfParser.prefix (prefix);
 
 	std::string urdfPath = "package://" + package + "/urdf/"
 	  + filename + ".urdf";
