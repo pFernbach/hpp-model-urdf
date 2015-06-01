@@ -573,7 +573,8 @@ namespace hpp
 
 	MatrixHomogeneousType parentJointInWorld;
 	if (link == model_.getRoot ()) {
-	  parentJointInWorld = rootJoint_->currentTransformation ();
+	  MatrixHomogeneousType result; result.setIdentity ();
+	  return result;
 	}
 	else {
 	  parentJointInWorld =
@@ -920,6 +921,8 @@ namespace hpp
 				    jointName);
 	}
 	joint->name (jointName);
+	pos.inverse ();
+	joint->linkInJointFrame (pos);
 	jointsMap_[jointName] = joint;
 	joint->lowerBound (0, -numeric_limits<double>::infinity());
 	joint->upperBound (0, +numeric_limits<double>::infinity());
