@@ -702,7 +702,19 @@ namespace hpp
       void Parser::addSolidComponentToJoint (const UrdfLinkConstPtrType& link,
 					     const JointPtr_t& joint)
       {
-	boost::shared_ptr < ::urdf::Collision> collision = link->collision;
+	typedef std::vector < boost::shared_ptr < ::urdf::Collision > >
+	  Collisions_t;
+	Collisions_t collisions (link->collision_array);
+
+	std::size_t objectId = 0;
+	for (Collisions_t::iterator it = collisions.begin ();
+	     it != collisions.end (); ++it) {
+
+	  std::ostringstream oss;
+	  oss << link->name << "_" << objectId;
+	  std::string objectName (oss.str ());
+	  ++objectId;
+	boost::shared_ptr < ::urdf::Collision> collision = *it;
 	fcl::CollisionGeometryPtr_t geometry;
 
 	// Handle the case where collision geometry is a mesh
@@ -711,7 +723,6 @@ namespace hpp
 	    = boost::dynamic_pointer_cast< ::urdf::Mesh> (collision->geometry);
 	  std::string collisionFilename = collisionGeometry->filename;
 	  ::urdf::Vector3 scale = collisionGeometry->scale;
-
 	  // Create FCL mesh by parsing Collada file.
 	  PolyhedronPtrType  polyhedron (new PolyhedronType);
 
@@ -755,14 +766,13 @@ namespace hpp
   }
 	else throw std::runtime_error (std::string ("Unknown geometry type :"));// +
     //collision->geometry->type);
-	
 
 	// Compute body position in world frame.
 	MatrixHomogeneousType position =
 	  computeBodyAbsolutePosition (link, collision->origin);
 	if (geometry) {
 	  CollisionObjectPtr_t collisionObject (CollisionObject::create
-              (geometry, position, prependPrefix (link->name)));
+              (geometry, position, prependPrefix (objectName)));
 
 	  // Add solid component.
 	  Body* body = joint->linkedBody ();
@@ -770,6 +780,7 @@ namespace hpp
 	  body->addInnerObject (collisionObject, true, true);
 	  hppDout (info, "Adding object " << collisionObject->name ()
 		   << " to body " << body->name ());
+	}
 	}
       }
 
