@@ -573,8 +573,7 @@ namespace hpp
 
 	MatrixHomogeneousType parentJointInWorld;
 	if (link == model_.getRoot ()) {
-	  MatrixHomogeneousType result; result.setIdentity ();
-	  return result;
+	  parentJointInWorld.setIdentity ();
 	}
 	else {
 	  parentJointInWorld =
@@ -582,16 +581,14 @@ namespace hpp
               ->currentTransformation ();
 	}
 	// Denormalize orientation if this is an actuated joint.
-	if (link == model_.getRoot ())
-	  {}
-	else
-	  if (link->parent_joint->type == ::urdf::Joint::REVOLUTE
-	      || link->parent_joint->type == ::urdf::Joint::CONTINUOUS
-	      || link->parent_joint->type == ::urdf::Joint::PRISMATIC) {
-	    MatrixHomogeneousType inverse =
-	      normalizeFrameOrientation (link->parent_joint).inverse ();
-	    parentJointInWorld = parentJointInWorld * inverse;
-	  }
+	if (link->parent_joint
+	    && (link->parent_joint->type == ::urdf::Joint::REVOLUTE
+		|| link->parent_joint->type == ::urdf::Joint::CONTINUOUS
+		|| link->parent_joint->type == ::urdf::Joint::PRISMATIC)) {
+	  MatrixHomogeneousType inverse =
+	    normalizeFrameOrientation (link->parent_joint).inverse ();
+	  parentJointInWorld = parentJointInWorld * inverse;
+	}
 
 	MatrixHomogeneousType position = parentJointInWorld *
 	  linkPositionInParentJoint;
