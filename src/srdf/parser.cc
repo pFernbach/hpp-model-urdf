@@ -64,10 +64,24 @@ namespace hpp
 	  }
       }
 
+      void Parser::sortCollisionPairs ()
+      {
+	// Retrieve collision pairs that will NOT be taken into account.
+	const CollisionPairsType& disabledColPairs
+	  = srdfModel_.getDisabledCollisionPairs ();
+        sortedDisabledCollisions_.resize (disabledColPairs.size());
+
+        std::partial_sort_copy (disabledColPairs.begin (), disabledColPairs.end (),
+            sortedDisabledCollisions_.begin (), sortedDisabledCollisions_.end (),
+            disabledCollisionComp_);
+      }
+
       void Parser::addCollisionPairs ()
       {
         typedef urdf::Parser::MapHppJointType MapHppJointType;
         MapHppJointType& jmap = urdfParser_->jointsMap_;
+
+        sortCollisionPairs ();
 
 	// Cycle through all joint pairs
 	for (MapHppJointType::const_iterator it1 = jmap.begin ();
@@ -111,22 +125,16 @@ namespace hpp
       Parser::isCollisionPairDisabled (const std::string& bodyName_1,
 				       const std::string& bodyName_2)
       {
-	// Retrieve collision pairs that will NOT be taken into account.
-	CollisionPairsType disabledColPairs
-	  = srdfModel_.getDisabledCollisionPairs ();
-
-	// Cycle through disabled collision pairs.
-	BOOST_FOREACH (CollisionPairType disabledColPair, disabledColPairs)
-	  {
-	    std::string disabled1 = disabledColPair.link1_;
-	    std::string disabled2 = disabledColPair.link2_;
-
-	    if ((bodyName_1 == disabled1 && bodyName_2 == disabled2)
-		|| (bodyName_1 == disabled2 && bodyName_2 == disabled1))
-		return true;
-	  }
-
-	return false;
+        DisabledCollision dc;
+        dc.link1_ = bodyName_1;
+        dc.link2_ = bodyName_2;
+        if (std::binary_search (sortedDisabledCollisions_.begin (),
+              sortedDisabledCollisions_.end (), dc, disabledCollisionComp_))
+          return true;
+        dc.link2_ = bodyName_1;
+        dc.link1_ = bodyName_2;
+        return std::binary_search (sortedDisabledCollisions_.begin (),
+              sortedDisabledCollisions_.end (), dc, disabledCollisionComp_);
       }
 
       bool

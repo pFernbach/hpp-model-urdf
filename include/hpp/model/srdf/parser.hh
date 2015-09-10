@@ -125,11 +125,26 @@ namespace hpp
           return in.substr (prefix_.size ());
         }
 
+        void sortCollisionPairs ();
+
         urdf::Parser* urdfParser_;
 	::srdf::Model srdfModel_;
 	RobotPtrType robot_;
 
         std::string prefix_;
+
+        typedef ::srdf::Model::DisabledCollision DisabledCollision;
+        std::vector < DisabledCollision > sortedDisabledCollisions_;
+        struct {
+          bool operator () (const DisabledCollision& c1, const DisabledCollision& c2)
+          {
+            int res_link1 = c1.link1_.compare (c2.link1_);
+            if (res_link1 == 0)
+              return c2.link2_.compare (c2.link2_) > 0;
+            else
+              return res_link1 > 0;
+          }
+        } disabledCollisionComp_;
       }; // class Parser
 
     } // end of namespace srdf.
