@@ -31,6 +31,7 @@
 
 #include <hpp/util/assertion.hh>
 #include <hpp/util/debug.hh>
+#include <hpp/util/timer.hh>
 #include <hpp/model/collision-object.hh>
 #include <hpp/model/joint.hh>
 
@@ -42,6 +43,10 @@ namespace hpp
   {
     namespace srdf
     {
+      namespace {
+        HPP_DEFINE_TIMECOUNTER(is_collision_pair_disabled);
+      }
+
       Parser::Parser (urdf::Parser* parser)
 	: urdfParser_ (parser), srdfModel_ (), robot_ ()
       {}
@@ -66,6 +71,7 @@ namespace hpp
 
       void Parser::sortCollisionPairs ()
       {
+        hppStartBenchmark (sort_collision_pairs);
 	// Retrieve collision pairs that will NOT be taken into account.
 	const CollisionPairsType& disabledColPairs
 	  = srdfModel_.getDisabledCollisionPairs ();
@@ -74,10 +80,13 @@ namespace hpp
         std::partial_sort_copy (disabledColPairs.begin (), disabledColPairs.end (),
             sortedDisabledCollisions_.begin (), sortedDisabledCollisions_.end (),
             disabledCollisionComp_);
+        hppStopBenchmark (sort_collision_pairs);
+        hppDisplayBenchmark (sort_collision_pairs);
       }
 
       void Parser::addCollisionPairs ()
       {
+        hppStartBenchmark (add_collision_pairs);
         typedef urdf::Parser::MapHppJointType MapHppJointType;
         MapHppJointType& jmap = urdfParser_->jointsMap_;
 
@@ -119,20 +128,26 @@ namespace hpp
 	    }
 	  }
 	}
+        hppStopBenchmark (add_collision_pairs);
+        hppDisplayBenchmark (add_collision_pairs);
       }
 
       bool
       Parser::isCollisionPairDisabled (const std::string& bodyName_1,
 				       const std::string& bodyName_2)
       {
+        HPP_START_TIMECOUNTER(is_collision_pair_disabled);
         DisabledCollision dc;
         dc.link1_ = bodyName_1;
         dc.link2_ = bodyName_2;
         if (std::binary_search (sortedDisabledCollisions_.begin (),
-              sortedDisabledCollisions_.end (), dc, disabledCollisionComp_))
+              sortedDisabledCollisions_.end (), dc, disabledCollisionComp_)) {
+          HPP_STOP_TIMECOUNTER(is_collision_pair_disabled);
           return true;
+        }
         dc.link2_ = bodyName_1;
         dc.link1_ = bodyName_2;
+        HPP_STOP_TIMECOUNTER(is_collision_pair_disabled);
         return std::binary_search (sortedDisabledCollisions_.begin (),
               sortedDisabledCollisions_.end (), dc, disabledCollisionComp_);
       }
@@ -249,6 +264,7 @@ namespace hpp
       {
 	// Add collision pairs.
 	addCollisionPairs ();
+        HPP_DISPLAY_TIMECOUNTER(is_collision_pair_disabled);
       }
     } // end of namespace srdf.
   } // end of namespace model.
