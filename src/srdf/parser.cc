@@ -265,6 +265,7 @@ namespace hpp
 	// Add collision pairs.
 	addCollisionPairs ();
         HPP_DISPLAY_TIMECOUNTER(is_collision_pair_disabled);
+        HPP_RESET_TIMECOUNTER(is_collision_pair_disabled);
       }
     } // end of namespace srdf.
   } // end of namespace model.
