@@ -140,7 +140,7 @@ namespace hpp
           {
             int res_link1 = c1.link1_.compare (c2.link1_);
             if (res_link1 == 0)
-              return c2.link2_.compare (c2.link2_) > 0;
+              return c1.link2_.compare (c2.link2_) > 0;
             else
               return res_link1 > 0;
           }
