@@ -147,9 +147,10 @@ namespace hpp
         }
         dc.link2_ = bodyName_1;
         dc.link1_ = bodyName_2;
-        HPP_STOP_TIMECOUNTER(is_collision_pair_disabled);
-        return std::binary_search (sortedDisabledCollisions_.begin (),
+        bool ret = std::binary_search (sortedDisabledCollisions_.begin (),
               sortedDisabledCollisions_.end (), dc, disabledCollisionComp_);
+        HPP_STOP_TIMECOUNTER(is_collision_pair_disabled);
+        return ret;
       }
 
       bool
