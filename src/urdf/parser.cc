@@ -681,12 +681,22 @@ namespace hpp
       (const std::string& resource_path, const ::urdf::Vector3& scale,
        const PolyhedronPtrType& polyhedron)
       {
-	Assimp::Importer importer;
-	importer.SetIOHandler(new ResourceIOSystem());
-	const aiScene* scene = importer.ReadFile
-	  (resource_path, aiProcess_SortByPType|
-	   aiProcess_GenNormals|aiProcess_Triangulate|aiProcess_GenUVCoords|
-	   aiProcess_FlipUVs);
+       Assimp::Importer importer;
+        // set list of ignored parameters (parameters used for rendering)
+       importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS,
+                        aiComponent_TANGENTS_AND_BITANGENTS|
+                        aiComponent_COLORS |
+                        aiComponent_BONEWEIGHTS |
+                        aiComponent_ANIMATIONS |
+                        aiComponent_LIGHTS |
+                        aiComponent_CAMERAS|
+                        aiComponent_TEXTURES |
+                        aiComponent_TEXCOORDS |
+                        aiComponent_MATERIALS |
+                        aiComponent_NORMALS
+                    );
+       importer.SetIOHandler(new ResourceIOSystem());
+       const aiScene* scene = importer.ReadFile(resource_path, aiProcess_SortByPType|aiProcess_Triangulate | aiProcess_RemoveComponent | aiProcess_JoinIdenticalVertices);
 	if (!scene) {
 	  throw std::runtime_error (std::string ("Could not load resource ") +
 				    resource_path + std::string ("\n") +
