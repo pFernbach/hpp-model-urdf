@@ -595,7 +595,8 @@ namespace hpp
 	return position;
       }
 
-      void Parser::buildMesh (const ::urdf::Vector3& scale,
+      void Parser::buildMesh (const std::string& name,
+                              const ::urdf::Vector3& scale,
 			      const aiScene* scene,
 			      const aiNode* node,
 			      std::vector<unsigned>& subMeshIndexes,
@@ -632,6 +633,15 @@ namespace hpp
 	  // add the indices
 	  for (uint32_t j = 0; j < input_mesh->mNumFaces; j++) {
 	    aiFace& face = input_mesh->mFaces[j];
+            if (face.mNumIndices != 3) {
+              std::stringstream ss;
+              ss << "Mesh " << name << " has a face with "
+                << face.mNumIndices << " vertices. This is not supported\n";
+              ss << "Node name is: " << node->mName.C_Str() << "\n";
+              ss << "Mesh index: " << i << "\n";
+              ss << "Face index: " << j << "\n";
+              throw std::invalid_argument (ss.str());
+            }
 	    // FIXME: can add only triangular faces.
 	    triangles_.push_back (fcl::Triangle
 				  (oldNbPoints + face.mIndices[0],
@@ -647,7 +657,7 @@ namespace hpp
 	}
 
 	for (uint32_t i=0; i < node->mNumChildren; ++i) {
-	  buildMesh(scale, scene, node->mChildren[i], subMeshIndexes, mesh);
+	  buildMesh(name, scale, scene, node->mChildren[i], subMeshIndexes, mesh);
 	}
       }
 
@@ -671,7 +681,7 @@ namespace hpp
 	}
 	vertices_.clear ();
 	triangles_.clear ();
-	buildMesh (scale, scene, scene->mRootNode, subMeshIndexes, mesh);
+	buildMesh (name, scale, scene, scene->mRootNode, subMeshIndexes, mesh);
 	mesh->addSubModel (vertices_, triangles_);
 	mesh->endModel ();
 

@@ -170,7 +170,8 @@ namespace hpp
 				  const aiScene* scene,
 				  const PolyhedronPtrType& mesh);
 
-	void buildMesh (const ::urdf::Vector3& scale,
+	void buildMesh (const std::string& name,
+                        const ::urdf::Vector3& scale,
 			const aiScene* scene,
 			const aiNode* node,
 			std::vector<unsigned>& subMeshIndexes,
