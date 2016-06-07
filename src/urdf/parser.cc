@@ -426,7 +426,7 @@ namespace hpp
 				    it->second->limits);
 	    break;
 	  case ::urdf::Joint::FLOATING:
-	    createFreeflyerJoint (jointName, position);
+	    throw std::runtime_error ("FLOATING joints are not supported");
 	    break;
 	  case ::urdf::Joint::PLANAR:
 	    throw std::runtime_error ("PLANAR joints are not supported");
