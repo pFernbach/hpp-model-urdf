@@ -122,6 +122,11 @@ namespace hpp
           prefix_ = prefix + "/";
         }
 
+        /// \brief Load polyhedron from resource.
+        void loadPolyhedronFromResource
+        (const std::string& filename, const ::urdf::Vector3& scale,
+         const Parser::PolyhedronPtrType& polyhedron);
+
       private:
 	/// \brief Retrieve joint name attached to a particular link.
 	void findSpecialJoint (const std::string& linkName,
@@ -160,10 +165,6 @@ namespace hpp
 	MatrixHomogeneousType computeBodyAbsolutePosition
 	(const UrdfLinkConstPtrType& link, const ::urdf::Pose& pose);
 
-	/// \brief Load polyhedron from resource.
-	void loadPolyhedronFromResource
-	(const std::string& filename, const ::urdf::Vector3& scale,
-	 const Parser::PolyhedronPtrType& polyhedron);
 
 	void meshFromAssimpScene (const std::string& name,
 				  const ::urdf::Vector3& scale,
